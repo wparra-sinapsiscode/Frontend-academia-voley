@@ -1,0 +1,759 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useAppContext } from '../../contexts/AppContext';
+import { Calendar, Clock, Users, Plus, Edit, Trash2, MapPin, Target, Package, FileText, Video, Download, Eye, Grid, List, Filter } from 'lucide-react';
+
+interface Material {
+  id: string;
+  name: string;
+  type: 'equipment' | 'document' | 'video' | 'link';
+  description?: string;
+  url?: string;
+  required: boolean;
+}
+
+interface Class {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  time: string;
+  duration: number;
+  location: string;
+  maxStudents: number;
+  enrolledStudents: string[];
+  objectives: string[];
+  materials: Material[];
+  notes?: string;
+  warmUpPlan?: string;
+  mainActivityPlan?: string;
+  coolDownPlan?: string;
+  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+}
+
+const ClassManagement: React.FC = () => {
+  const { categories, students, darkMode } = useAppContext();
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [classes, setClasses] = useState<Class[]>([
+    {
+      id: '1',
+      title: 'Técnica de Remate',
+      category: 'Juvenil A',
+      date: '2024-01-15',
+      time: '16:00',
+      duration: 90,
+      location: 'Cancha Principal',
+      maxStudents: 12,
+      enrolledStudents: ['1', '2', '3', '4', '5'],
+      objectives: ['Mejorar técnica de aproximación', 'Perfeccionar timing de salto', 'Aumentar potencia de remate'],
+      materials: [
+        { id: 'm1', name: 'Balones de voleibol', type: 'equipment', description: '12 balones oficiales', required: true },
+        { id: 'm2', name: 'Conos marcadores', type: 'equipment', description: '8 conos para delimitar zonas', required: true },
+        { id: 'm3', name: 'Video técnica de remate', type: 'video', url: 'https://youtube.com/watch?v=ejemplo', required: false }
+      ],
+      notes: 'Enfocarse en la mecánica del salto y la coordinación brazos-piernas',
+      warmUpPlan: '10 min - Trote suave y movilidad articular',
+      mainActivityPlan: '60 min - Progresión técnica de remate: aproximación, salto, golpeo',
+      coolDownPlan: '20 min - Estiramientos y relajación',
+      status: 'scheduled'
+    },
+    {
+      id: '2',
+      title: 'Defensa en Red',
+      category: 'Juvenil B',
+      date: '2024-01-15',
+      time: '18:00',
+      duration: 75,
+      location: 'Cancha Auxiliar',
+      maxStudents: 10,
+      enrolledStudents: ['6', '7', '8'],
+      objectives: ['Coordinación en bloqueo doble', 'Lectura del atacante', 'Transición defensa-ataque'],
+      materials: [
+        { id: 'm4', name: 'Red regulamentaria', type: 'equipment', description: 'Red a altura oficial', required: true },
+        { id: 'm5', name: 'Guía de posiciones', type: 'document', url: '/docs/posiciones-defensa.pdf', required: false }
+      ],
+      notes: 'Trabajar comunicación verbal durante el bloqueo',
+      warmUpPlan: '10 min - Calentamiento articular específico',
+      mainActivityPlan: '50 min - Técnica de bloqueo individual y coordinado',
+      coolDownPlan: '15 min - Estiramientos de brazos y espalda',
+      status: 'scheduled'
+    },
+    {
+      id: '3',
+      title: 'Servicio y Recepción',
+      category: 'Infantil',
+      date: '2024-01-16',
+      time: '15:30',
+      duration: 60,
+      location: 'Cancha Principal',
+      maxStudents: 8,
+      enrolledStudents: ['9', '10', '11', '12'],
+      objectives: ['Técnica básica de servicio', 'Posición de recepción', 'Comunicación en cancha'],
+      materials: [
+        { id: 'm6', name: 'Balones ligeros', type: 'equipment', description: 'Balones adaptados para categoría infantil', required: true },
+        { id: 'm7', name: 'Zona de servicio marcada', type: 'equipment', description: 'Cinta para marcar zona', required: true }
+      ],
+      notes: 'Adaptación de altura de red para categoría infantil',
+      warmUpPlan: '10 min - Juegos de coordinación',
+      mainActivityPlan: '40 min - Fundamentos básicos de servicio y recepción',
+      coolDownPlan: '10 min - Juego libre y estiramientos',
+      status: 'scheduled'
+    }
+  ]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scheduled': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
+      case 'in-progress': return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300';
+      case 'completed': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'scheduled': return 'Programada';
+      case 'in-progress': return 'En Progreso';
+      case 'completed': return 'Completada';
+      case 'cancelled': return 'Cancelada';
+      default: return status;
+    }
+  };
+
+  const getMaterialIcon = (type: string) => {
+    switch (type) {
+      case 'equipment': return <Package size={16} className="text-blue-600" />;
+      case 'document': return <FileText size={16} className="text-green-600" />;
+      case 'video': return <Video size={16} className="text-purple-600" />;
+      case 'link': return <Download size={16} className="text-orange-600" />;
+      default: return <Package size={16} />;
+    }
+  };
+
+  const filteredClasses = classes.filter(classItem => {
+    const matchesCategory = filterCategory === 'all' || classItem.category === filterCategory;
+    return matchesCategory;
+  });
+
+  const handleCreateClass = (classData: Partial<Class>) => {
+    const newClass: Class = {
+      id: Date.now().toString(),
+      enrolledStudents: [],
+      materials: [],
+      status: 'scheduled',
+      ...classData as Class
+    };
+    setClasses([...classes, newClass]);
+    setShowCreateModal(false);
+  };
+
+  const ClassCard = ({ classItem }: { classItem: Class }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{classItem.title}</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{classItem.category}</p>
+        </div>
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(classItem.status)}`}>
+          {getStatusLabel(classItem.status)}
+        </span>
+      </div>
+
+      <div className="space-y-3 mb-4">
+        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+          <Calendar size={16} />
+          <span>{classItem.date}</span>
+          <Clock size={16} className="ml-4" />
+          <span>{classItem.time} ({classItem.duration} min)</span>
+        </div>
+        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+          <MapPin size={16} />
+          <span>{classItem.location}</span>
+          <Users size={16} className="ml-4" />
+          <span>{classItem.enrolledStudents.length}/{classItem.maxStudents} estudiantes</span>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Objetivos:</h4>
+        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+          {classItem.objectives.map((objective, index) => (
+            <li key={index} className="flex items-start space-x-2">
+              <Target size={12} className="mt-1 text-blue-600 dark:text-blue-400" />
+              <span>{objective}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {classItem.materials.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Materiales y Recursos:</h4>
+          <div className="space-y-2">
+            {classItem.materials.map((material) => (
+              <div key={material.id} className="flex items-center space-x-2 text-sm">
+                {getMaterialIcon(material.type)}
+                <span className={material.required ? 'font-medium' : ''}>{material.name}</span>
+                {material.required && <span className="text-red-500">*</span>}
+                {material.url && (
+                  <button className="text-blue-600 hover:text-blue-800">
+                    <Eye size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end space-x-2">
+        <button
+          onClick={() => setSelectedClass(classItem)}
+          className="text-blue-600 hover:text-blue-900 p-2"
+        >
+          <Eye size={16} />
+        </button>
+        <button className="text-green-600 hover:text-green-900 p-2">
+          <Edit size={16} />
+        </button>
+        <button className="text-red-600 hover:text-red-900 p-2">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </motion.div>
+  );
+
+  const CreateClassModal = () => {
+    const [formData, setFormData] = useState({
+      title: '',
+      category: '',
+      date: '',
+      time: '',
+      duration: 60,
+      location: '',
+      maxStudents: 12,
+      objectives: [''],
+      materials: [] as Material[],
+      notes: '',
+      warmUpPlan: '',
+      mainActivityPlan: '',
+      coolDownPlan: ''
+    });
+
+    const [newMaterial, setNewMaterial] = useState({
+      name: '',
+      type: 'equipment' as Material['type'],
+      description: '',
+      url: '',
+      required: false
+    });
+
+    const addObjective = () => {
+      setFormData({
+        ...formData,
+        objectives: [...formData.objectives, '']
+      });
+    };
+
+    const updateObjective = (index: number, value: string) => {
+      const newObjectives = [...formData.objectives];
+      newObjectives[index] = value;
+      setFormData({ ...formData, objectives: newObjectives });
+    };
+
+    const removeObjective = (index: number) => {
+      setFormData({
+        ...formData,
+        objectives: formData.objectives.filter((_, i) => i !== index)
+      });
+    };
+
+    const addMaterial = () => {
+      if (newMaterial.name.trim()) {
+        const material: Material = {
+          id: Date.now().toString(),
+          ...newMaterial
+        };
+        setFormData({
+          ...formData,
+          materials: [...formData.materials, material]
+        });
+        setNewMaterial({
+          name: '',
+          type: 'equipment',
+          description: '',
+          url: '',
+          required: false
+        });
+      }
+    };
+
+    const removeMaterial = (materialId: string) => {
+      setFormData({
+        ...formData,
+        materials: formData.materials.filter(m => m.id !== materialId)
+      });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      handleCreateClass(formData);
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Programar Nueva Clase</h3>
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Información Básica */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Título de la Clase</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Seleccionar categoría</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.name}>{category.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                <input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duración (minutos)</label>
+                <input
+                  type="number"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="30"
+                  max="180"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+                <select
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Seleccionar cancha</option>
+                  <option value="Cancha Principal">Cancha Principal</option>
+                  <option value="Cancha Auxiliar">Cancha Auxiliar</option>
+                  <option value="Gimnasio">Gimnasio</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Objetivos */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Objetivos de la Clase</label>
+              {formData.objectives.map((objective, index) => (
+                <div key={index} className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={objective}
+                    onChange={(e) => updateObjective(index, e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Objetivo de aprendizaje"
+                  />
+                  {formData.objectives.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeObjective(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addObjective}
+                className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
+              >
+                <Plus size={16} />
+                <span>Agregar objetivo</span>
+              </button>
+            </div>
+
+            {/* Materiales y Recursos */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Materiales y Recursos</label>
+              
+              {/* Lista de materiales */}
+              {formData.materials.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {formData.materials.map((material) => (
+                    <div key={material.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        {getMaterialIcon(material.type)}
+                        <span className="font-medium">{material.name}</span>
+                        {material.required && <span className="text-red-500">*</span>}
+                        {material.description && (
+                          <span className="text-sm text-gray-600">- {material.description}</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeMaterial(material.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Agregar nuevo material */}
+              <div className="border border-gray-300 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Agregar Material/Recurso</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Nombre del material"
+                    value={newMaterial.name}
+                    onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <select
+                    value={newMaterial.type}
+                    onChange={(e) => setNewMaterial({ ...newMaterial, type: e.target.value as Material['type'] })}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="equipment">Equipamiento</option>
+                    <option value="document">Documento</option>
+                    <option value="video">Video</option>
+                    <option value="link">Enlace</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Descripción"
+                    value={newMaterial.description}
+                    onChange={(e) => setNewMaterial({ ...newMaterial, description: e.target.value })}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex items-center space-x-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={newMaterial.required}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, required: e.target.checked })}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm">Requerido</span>
+                    </label>
+                  </div>
+                </div>
+                {(newMaterial.type === 'document' || newMaterial.type === 'video' || newMaterial.type === 'link') && (
+                  <input
+                    type="url"
+                    placeholder="URL del recurso"
+                    value={newMaterial.url}
+                    onChange={(e) => setNewMaterial({ ...newMaterial, url: e.target.value })}
+                    className="w-full mt-2 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={addMaterial}
+                  className="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
+                >
+                  <Plus size={16} />
+                  <span>Agregar material</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Plan de Clase */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Calentamiento</label>
+                <textarea
+                  value={formData.warmUpPlan}
+                  onChange={(e) => setFormData({ ...formData, warmUpPlan: e.target.value })}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Actividades de calentamiento..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Actividad Principal</label>
+                <textarea
+                  value={formData.mainActivityPlan}
+                  onChange={(e) => setFormData({ ...formData, mainActivityPlan: e.target.value })}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Actividades principales..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enfriamiento</label>
+                <textarea
+                  value={formData.coolDownPlan}
+                  onChange={(e) => setFormData({ ...formData, coolDownPlan: e.target.value })}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Actividades de enfriamiento..."
+                />
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notas Adicionales</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Notas importantes para la clase..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Programar Clase
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Gestión de Clases</h1>
+          <p className="text-gray-600">Programa y gestiona tus clases de voleibol</p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+        >
+          <Plus size={16} />
+          <span>Nueva Clase</span>
+        </button>
+      </div>
+
+      {/* Filters and View Toggle */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">Todas las categorías</option>
+            {categories.map(category => (
+              <option key={category.id} value={category.name}>{category.name}</option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+          >
+            <List size={16} />
+          </button>
+          <button
+            onClick={() => setViewMode('calendar')}
+            className={`p-2 rounded-lg ${viewMode === 'calendar' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+          >
+            <Grid size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Classes List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredClasses.map((classItem) => (
+          <ClassCard key={classItem.id} classItem={classItem} />
+        ))}
+      </div>
+
+      {/* Create Class Modal */}
+      {showCreateModal && <CreateClassModal />}
+
+      {/* Class Detail Modal */}
+      {selectedClass && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">{selectedClass.title}</h3>
+              <button
+                onClick={() => setSelectedClass(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><strong>Categoría:</strong> {selectedClass.category}</div>
+                <div><strong>Estado:</strong> {getStatusLabel(selectedClass.status)}</div>
+                <div><strong>Fecha:</strong> {selectedClass.date}</div>
+                <div><strong>Hora:</strong> {selectedClass.time}</div>
+                <div><strong>Duración:</strong> {selectedClass.duration} minutos</div>
+                <div><strong>Ubicación:</strong> {selectedClass.location}</div>
+              </div>
+
+              {selectedClass.objectives.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Objetivos:</h4>
+                  <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                    {selectedClass.objectives.map((objective, index) => (
+                      <li key={index}>{objective}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {selectedClass.materials.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Materiales y Recursos:</h4>
+                  <div className="space-y-2">
+                    {selectedClass.materials.map((material) => (
+                      <div key={material.id} className="flex items-center space-x-2 text-sm bg-gray-50 p-2 rounded">
+                        {getMaterialIcon(material.type)}
+                        <span>{material.name}</span>
+                        {material.required && <span className="text-red-500">*</span>}
+                        {material.description && <span className="text-gray-600">- {material.description}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(selectedClass.warmUpPlan || selectedClass.mainActivityPlan || selectedClass.coolDownPlan) && (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Plan de Clase:</h4>
+                  <div className="space-y-2 text-sm">
+                    {selectedClass.warmUpPlan && (
+                      <div>
+                        <strong>Calentamiento:</strong> {selectedClass.warmUpPlan}
+                      </div>
+                    )}
+                    {selectedClass.mainActivityPlan && (
+                      <div>
+                        <strong>Actividad Principal:</strong> {selectedClass.mainActivityPlan}
+                      </div>
+                    )}
+                    {selectedClass.coolDownPlan && (
+                      <div>
+                        <strong>Enfriamiento:</strong> {selectedClass.coolDownPlan}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedClass.notes && (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Notas:</h4>
+                  <p className="text-sm text-gray-600">{selectedClass.notes}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setSelectedClass(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+              >
+                Cerrar
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+export default ClassManagement;

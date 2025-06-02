@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-200 dark:border-gray-700;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-blue-50 to-primary-100 text-gray-900 font-sans;
+    @apply dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800 dark:text-gray-100;
+    background-attachment: fixed;
+    margin: 0;
+    min-height: 100vh;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-300 hover:bg-primary-400 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary-900 hover:bg-secondary-800 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+  }
+  
+  .btn-accent {
+    @apply bg-accent-500 hover:bg-accent-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300;
+    @apply dark:bg-gray-800 dark:border-gray-700 dark:shadow-gray-900/20;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all duration-200 bg-white;
+    @apply dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-primary-400;
+  }
+  
+  .gradient-bg {
+    @apply bg-gradient-to-br from-primary-300 via-primary-400 to-secondary-900;
+    @apply dark:bg-gradient-to-br dark:from-gray-800 dark:via-gray-900 dark:to-black;
+  }
+  
+  .glass-effect {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20;
+    @apply dark:bg-gray-800/80 dark:border-gray-600/20;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-primary-100 cursor-pointer;
+    @apply dark:hover:bg-gray-700/50 dark:text-gray-200;
+  }
+  
+  .sidebar-item.active {
+    @apply bg-primary-300 text-white hover:bg-primary-400;
+    @apply dark:bg-primary-600 dark:hover:bg-primary-700;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
