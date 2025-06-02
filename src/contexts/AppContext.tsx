@@ -770,7 +770,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     console.log('🚀 AppContext - Primeros mockClassPlans:', mockClassPlans);
     
     // TEMPORAL: Descomentar la siguiente línea para limpiar localStorage y forzar carga de mockData
-    localStorage.removeItem('volleyAcademyData');
+    // localStorage.removeItem('volleyAcademyData');
     
     const savedData = localStorage.getItem('volleyAcademyData');
     console.log('🚀 AppContext - Datos guardados en localStorage:', !!savedData);
