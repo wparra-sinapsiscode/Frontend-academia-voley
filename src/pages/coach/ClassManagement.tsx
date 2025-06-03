@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../contexts/AppContext';
-import { Calendar, Clock, Users, Plus, Edit, Trash2, MapPin, Target, Package, FileText, Video, Download, Eye, Grid, List, Filter } from 'lucide-react';
-import { mockClassPlans } from '../../data/mockData';
+import { Calendar, Clock, Users, Plus, Edit, Trash2, MapPin, Target, Package, FileText, Video, Download, Eye, Grid, List, Filter, UserCheck } from 'lucide-react';
+import { mockClassPlans, mockCoaches } from '../../data/mockData';
 
 interface Material {
   id: string;
@@ -46,8 +46,6 @@ const ClassManagement: React.FC = () => {
     const [filterCategory, setFilterCategory] = useState('all');
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     
-    // Log para depuración
-    console.log('ClassManagement - classPlans desde contexto:', classPlans);
   // Convert classPlans to the Class interface format for display
   // Helper function to safely convert date
   const safeDate = (date: any): string => {
@@ -69,24 +67,45 @@ const ClassManagement: React.FC = () => {
       
       return dateObj.toISOString().split('T')[0];
     } catch (error) {
-      console.error('Error converting date:', date, error);
       return new Date().toISOString().split('T')[0];
     }
   };
 
-  // Usar directamente mockClassPlans
-  const mockClasses = mockClassPlans.map((classItem, index) => {
+  // Función para obtener estudiantes por categoría
+  const getStudentsByCategory = (categoryName: string): string[] => {
+    // Buscar la categoría por nombre
+    const category = categories.find(cat => cat.name === categoryName);
+    if (!category) return [];
+    
+    // Filtrar estudiantes que pertenecen a esta categoría
+    return students
+      .filter(student => student.category?.id === category.id || (student as any).categoryId === category.id)
+      .map(student => student.id);
+  };
+
+  // Función para obtener el límite máximo de estudiantes por categoría
+  const getMaxStudentsByCategory = (categoryName: string): number => {
+    const category = categories.find(cat => cat.name === categoryName);
+    return category?.maxStudents || 20; // Default 20 si no se encuentra
+  };
+
+  // Filtrar mockClassPlans solo por las clases creadas por el coach actual
+  const mockClasses = mockClassPlans.filter(classItem => classItem.coachId === user?.id).map((classItem, index) => {
     try {
+      const categoryName = classItem.category || 'Sin categoría';
+      const enrolledStudents = getStudentsByCategory(categoryName);
+      const maxStudents = getMaxStudentsByCategory(categoryName);
+      
       return {
         id: classItem.id || `class_${index}`,
         title: classItem.title || 'Sin título',
-        category: classItem.category || 'Sin categoría',
+        category: categoryName,
         date: safeDate(classItem.date),
         time: classItem.startTime || '00:00',
         duration: classItem.duration || 60,
         location: classItem.location || 'Sin ubicación',
-        maxStudents: 12, // Default value
-        enrolledStudents: [], // Will be populated later
+        maxStudents: maxStudents,
+        enrolledStudents: enrolledStudents,
         objectives: classItem.objectives || [],
         materials: classItem.materials || [],
         notes: '',
@@ -96,24 +115,27 @@ const ClassManagement: React.FC = () => {
         status: 'scheduled' as const
       };
     } catch (error) {
-      console.error('Error processing mock class item:', classItem, error);
       return null;
     }
   }).filter(Boolean);
   
-  // Clases del contexto (para las creadas por el usuario)
-  const userClasses = (classPlans || []).map((classItem, index) => {
+  // Clases del contexto (para las creadas por el usuario) - solo las del coach actual
+  const userClasses = (classPlans || []).filter(classItem => classItem.coachId === user?.id).map((classItem, index) => {
     try {
+      const categoryName = classItem.category || 'Sin categoría';
+      const enrolledStudents = getStudentsByCategory(categoryName);
+      const maxStudents = getMaxStudentsByCategory(categoryName);
+      
       return {
         id: classItem.id || `userclass_${index}`,
         title: classItem.title || 'Sin título',
-        category: classItem.category || 'Sin categoría',
+        category: categoryName,
         date: safeDate(classItem.date),
         time: classItem.startTime || '00:00',
         duration: classItem.duration || 60,
         location: classItem.location || 'Sin ubicación',
-        maxStudents: 12,
-        enrolledStudents: [],
+        maxStudents: maxStudents,
+        enrolledStudents: enrolledStudents,
         objectives: classItem.objectives || [],
         materials: classItem.materials || [],
         notes: '',
@@ -123,7 +145,6 @@ const ClassManagement: React.FC = () => {
         status: 'scheduled' as const
       };
     } catch (error) {
-      console.error('Error processing user class item:', classItem, error);
       return null;
     }
   }).filter(Boolean);
@@ -132,85 +153,51 @@ const ClassManagement: React.FC = () => {
   const userClassIds = new Set(userClasses.map(c => c.id));
   const uniqueMockClasses = mockClasses.filter(c => !userClassIds.has(c.id));
   const classes = [...uniqueMockClasses, ...userClasses];
-  
-  console.log('ClassManagement - mockClasses:', mockClasses.length);
-  console.log('ClassManagement - userClasses:', userClasses.length);
-  console.log('ClassManagement - total classes:', classes.length);
 
-  // Old mock data kept for reference but not used
-  const oldMockClasses = [
-    {
-      id: '1',
-      title: 'Técnica de Remate',
-      category: 'Juvenil A',
-      date: '2024-01-15',
-      time: '16:00',
-      duration: 90,
-      location: 'Cancha Principal',
-      maxStudents: 12,
-      enrolledStudents: ['1', '2', '3', '4', '5'],
-      objectives: ['Mejorar técnica de aproximación', 'Perfeccionar timing de salto', 'Aumentar potencia de remate'],
-      materials: [
-        { id: 'm1', name: 'Balones de voleibol', type: 'equipment', description: '12 balones oficiales', required: true },
-        { id: 'm2', name: 'Conos marcadores', type: 'equipment', description: '8 conos para delimitar zonas', required: true },
-        { id: 'm3', name: 'Video técnica de remate', type: 'video', url: 'https://youtube.com/watch?v=ejemplo', required: false }
-      ],
-      notes: 'Enfocarse en la mecánica del salto y la coordinación brazos-piernas',
-      warmUpPlan: '10 min - Trote suave y movilidad articular',
-      mainActivityPlan: '60 min - Progresión técnica de remate: aproximación, salto, golpeo',
-      coolDownPlan: '20 min - Estiramientos y relajación',
-      status: 'scheduled'
-    },
-    {
-      id: '2',
-      title: 'Defensa en Red',
-      category: 'Juvenil B',
-      date: '2024-01-15',
-      time: '18:00',
-      duration: 75,
-      location: 'Cancha Auxiliar',
-      maxStudents: 10,
-      enrolledStudents: ['6', '7', '8'],
-      objectives: ['Coordinación en bloqueo doble', 'Lectura del atacante', 'Transición defensa-ataque'],
-      materials: [
-        { id: 'm4', name: 'Red regulamentaria', type: 'equipment', description: 'Red a altura oficial', required: true },
-        { id: 'm5', name: 'Guía de posiciones', type: 'document', url: '/docs/posiciones-defensa.pdf', required: false }
-      ],
-      notes: 'Trabajar comunicación verbal durante el bloqueo',
-      warmUpPlan: '10 min - Calentamiento articular específico',
-      mainActivityPlan: '50 min - Técnica de bloqueo individual y coordinado',
-      coolDownPlan: '15 min - Estiramientos de brazos y espalda',
-      status: 'scheduled'
-    },
-    {
-      id: '3',
-      title: 'Servicio y Recepción',
-      category: 'Infantil',
-      date: '2024-01-16',
-      time: '15:30',
-      duration: 60,
-      location: 'Cancha Principal',
-      maxStudents: 8,
-      enrolledStudents: ['9', '10', '11', '12'],
-      objectives: ['Técnica básica de servicio', 'Posición de recepción', 'Comunicación en cancha'],
-      materials: [
-        { id: 'm6', name: 'Balones ligeros', type: 'equipment', description: 'Balones adaptados para categoría infantil', required: true },
-        { id: 'm7', name: 'Zona de servicio marcada', type: 'equipment', description: 'Cinta para marcar zona', required: true }
-      ],
-      notes: 'Adaptación de altura de red para categoría infantil',
-      warmUpPlan: '10 min - Juegos de coordinación',
-      mainActivityPlan: '40 min - Fundamentos básicos de servicio y recepción',
-      coolDownPlan: '10 min - Juego libre y estiramientos',
-      status: 'scheduled'
+  // 🔍 DEBUG: Log all classes in ClassManagement
+  React.useEffect(() => {
+    if (user?.id) {
+      console.log('📚 GESTIÓN DE CLASES - COACH:', {
+        coachName: user.name,
+        coachId: user.id,
+        totalClases: classes.length,
+        clasesMock: uniqueMockClasses.length,
+        clasesUsuario: userClasses.length,
+        clasesCompletas: classes.map(clase => ({
+          id: clase.id,
+          titulo: clase.title,
+          categoria: clase.category,
+          fecha: clase.date,
+          hora: clase.time,
+          ubicacion: clase.location,
+          objetivos: clase.objectives,
+          materiales: clase.materials?.length || 0,
+          tipo: uniqueMockClasses.includes(clase) ? 'MOCK' : 'USUARIO'
+        }))
+      });
+      
+      console.log('📚 CONTEXT classPlans en ClassManagement:', {
+        totalEnContexto: classPlans?.length || 0,
+        clasesDelCoach: (classPlans || []).filter(cp => cp.coachId === user.id).length,
+        todasLasClasesDelContexto: (classPlans || []).map(cp => ({
+          id: cp.id,
+          titulo: cp.title,
+          categoria: cp.category,
+          coachId: cp.coachId,
+          fecha: cp.date,
+          esDelCoachActual: cp.coachId === user.id
+        }))
+      });
     }
-  ];
+  }, [classes, user?.id, classPlans]);
+  
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'scheduled': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
-      case 'in-progress': return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300';
+      case 'scheduled': return 'bg-primary/10 text-primary';
+      case 'in-progress': return 'bg-[var(--color-success)]/10 text-[var(--color-success)]';
       case 'completed': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300';
+      case 'cancelled': return 'bg-[var(--color-error)]/10 text-[var(--color-error)]';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
@@ -227,10 +214,10 @@ const ClassManagement: React.FC = () => {
 
   const getMaterialIcon = (type: string) => {
     switch (type) {
-      case 'equipment': return <Package size={16} className="text-blue-600" />;
-      case 'document': return <FileText size={16} className="text-green-600" />;
-      case 'video': return <Video size={16} className="text-purple-600" />;
-      case 'link': return <Download size={16} className="text-orange-600" />;
+      case 'equipment': return <Package size={16} className="text-primary" />;
+      case 'document': return <FileText size={16} className="text-[var(--color-success)]" />;
+      case 'video': return <Video size={16} className="text-accent" />;
+      case 'link': return <Download size={16} className="text-[var(--color-warning)]" />;
       default: return <Package size={16} />;
     }
   };
@@ -266,6 +253,12 @@ const ClassManagement: React.FC = () => {
       createdAt: new Date()
     };
     
+    console.log('✅ CREANDO NUEVA CLASE:', {
+      coachId: user.id,
+      coachName: user?.name,
+      clasePlanData: classPlanData
+    });
+    
     addClassPlan(classPlanData);
     setShowCreateModal(false);
     
@@ -278,6 +271,16 @@ const ClassManagement: React.FC = () => {
 
   const handleEditClass = (classData: Partial<Class>) => {
     if (!editingClass || !user?.id) return;
+    
+    // Verificar si es una clase mock (no editable)
+    const isMockClass = mockClassPlans.some(mockClass => mockClass.id === editingClass.id);
+    
+    if (isMockClass) {
+      alert('No se pueden editar las clases de ejemplo. Solo puedes editar clases que hayas creado.');
+      setShowEditModal(false);
+      setEditingClass(null);
+      return;
+    }
     
     // Convert Class format to ClassPlan format
     const classPlanData = {
@@ -316,6 +319,16 @@ const ClassManagement: React.FC = () => {
 
   const confirmDeleteClass = () => {
     if (!classToDelete) return;
+    
+    // Solo permitir eliminar clases creadas por el usuario, no las clases mock
+    const isMockClass = mockClassPlans.some(mockClass => mockClass.id === classToDelete.id);
+    
+    if (isMockClass) {
+      alert('No se pueden eliminar las clases de ejemplo. Solo puedes eliminar clases que hayas creado.');
+      setShowDeleteConfirm(false);
+      setClassToDelete(null);
+      return;
+    }
     
     deleteClassPlan(classToDelete.id);
     setShowDeleteConfirm(false);
@@ -374,6 +387,24 @@ const ClassManagement: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{classItem.title}</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">{classItem.category}</p>
+          {/* Mostrar quién creó la clase */}
+          {(() => {
+            const mockClass = mockClassPlans.find(mc => mc.id === classItem.id);
+            if (mockClass) {
+              const creator = mockCoaches.find(coach => coach.id === mockClass.coachId);
+              if (creator) {
+                return (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <UserCheck size={14} className="text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
+                      Creado por {creator.name}
+                    </span>
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
         </div>
         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(classItem.status)}`}>
           {getStatusLabel(classItem.status)}
@@ -431,23 +462,39 @@ const ClassManagement: React.FC = () => {
         <button
           onClick={() => setSelectedClass(classItem)}
           className="text-blue-600 hover:text-blue-900 p-2"
+          title="Ver detalles"
         >
           <Eye size={16} />
         </button>
-        <button 
-          onClick={() => handleStartEdit(classItem)}
-          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-2 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
-          title="Editar clase"
-        >
-          <Edit size={16} />
-        </button>
-        <button 
-          onClick={() => handleDeleteClass(classItem)}
-          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          title="Eliminar clase"
-        >
-          <Trash2 size={16} />
-        </button>
+        {/* Solo mostrar botones de editar y eliminar para clases creadas por el usuario */}
+        {(() => {
+          const isMockClass = mockClassPlans.some(mockClass => mockClass.id === classItem.id);
+          if (isMockClass) {
+            return (
+              <span className="text-xs text-gray-500 dark:text-gray-400 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                Clase de ejemplo
+              </span>
+            );
+          }
+          return (
+            <>
+              <button 
+                onClick={() => handleStartEdit(classItem)}
+                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-2 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                title="Editar clase"
+              >
+                <Edit size={16} />
+              </button>
+              <button 
+                onClick={() => handleDeleteClass(classItem)}
+                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                title="Eliminar clase"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
+          );
+        })()}
       </div>
     </motion.div>
   );
@@ -583,7 +630,7 @@ const ClassManagement: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -601,7 +648,7 @@ const ClassManagement: React.FC = () => {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full border-[var(--color-border)] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
                   required
                 />
               </div>
@@ -676,7 +723,7 @@ const ClassManagement: React.FC = () => {
                     type="text"
                     value={objective}
                     onChange={(e) => updateObjective(index, e.target.value)}
-                    className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="flex-1 border-[var(--color-border)] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
                     placeholder="Objetivo de aprendizaje"
                   />
                   {formData.objectives.length > 1 && (
@@ -738,12 +785,12 @@ const ClassManagement: React.FC = () => {
                     placeholder="Nombre del material"
                     value={newMaterial.name}
                     onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })}
-                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="border-[var(--color-border)] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
                   />
                   <select
                     value={newMaterial.type}
                     onChange={(e) => setNewMaterial({ ...newMaterial, type: e.target.value as Material['type'] })}
-                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="border-[var(--color-border)] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
                   >
                     <option value="equipment">Equipamiento</option>
                     <option value="document">Documento</option>
@@ -775,7 +822,7 @@ const ClassManagement: React.FC = () => {
                     placeholder="URL del recurso"
                     value={newMaterial.url}
                     onChange={(e) => setNewMaterial({ ...newMaterial, url: e.target.value })}
-                    className="w-full mt-2 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="w-full mt-2 border-[var(--color-border)] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
                   />
                 )}
                 <button
@@ -839,13 +886,13 @@ const ClassManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500"
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
               >
                 Programar Clase
               </button>
@@ -938,7 +985,7 @@ const ClassManagement: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -1119,13 +1166,13 @@ const ClassManagement: React.FC = () => {
                   setShowEditModal(false);
                   setEditingClass(null);
                 }}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500"
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                className="px-4 py-2 bg-[var(--color-success)] hover:bg-[var(--color-success)]/90 text-white rounded-lg transition-colors"
               >
                 Guardar Cambios
               </button>
@@ -1141,7 +1188,7 @@ const ClassManagement: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -1174,13 +1221,13 @@ const ClassManagement: React.FC = () => {
               setShowDeleteConfirm(false);
               setClassToDelete(null);
             }}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={confirmDeleteClass}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="px-4 py-2 bg-[var(--color-error)] hover:bg-[var(--color-error)]/90 text-white rounded-lg transition-colors"
           >
             Eliminar Clase
           </button>
@@ -1209,12 +1256,15 @@ const ClassManagement: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Clases</h1>
-          <p className="text-gray-600 dark:text-gray-400">Programa y gestiona tus clases de voleibol</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Mis Clases</h1>
+          <p className="text-gray-600 dark:text-gray-400">Programa y gestiona las clases que has creado</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+            Mostrando solo las clases creadas por {user?.name || 'ti'}
+          </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
         >
           <Plus size={16} />
           <span>Nueva Clase</span>
@@ -1227,7 +1277,7 @@ const ClassManagement: React.FC = () => {
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="border-[var(--color-border)] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
           >
             <option value="all">Todas las categorías</option>
             {categories.map(category => (
@@ -1238,19 +1288,19 @@ const ClassManagement: React.FC = () => {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="border-[var(--color-border)] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
           />
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
+            className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
           >
             <List size={16} />
           </button>
           <button
             onClick={() => setViewMode('calendar')}
-            className={`p-2 rounded-lg ${viewMode === 'calendar' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
+            className={`p-2 rounded-lg ${viewMode === 'calendar' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
           >
             <Grid size={16} />
           </button>
@@ -1261,8 +1311,9 @@ const ClassManagement: React.FC = () => {
       {classes.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-500 dark:text-gray-400">
-            <p className="text-lg mb-2">No hay clases programadas</p>
+            <p className="text-lg mb-2">No has creado ninguna clase aún</p>
             <p className="text-sm">Haz clic en "Nueva Clase" para programar tu primera clase</p>
+            <p className="text-xs mt-2">Solo puedes ver y gestionar las clases que tú hayas creado</p>
           </div>
         </div>
       ) : (
@@ -1294,7 +1345,7 @@ const ClassManagement: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -1382,7 +1433,7 @@ const ClassManagement: React.FC = () => {
             <div className="flex justify-end mt-6">
               <button
                 onClick={() => setSelectedClass(null)}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500"
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
               >
                 Cerrar
               </button>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '../../contexts/AppContext';
+import { addNewCoach } from '../../data/mockData';
 import { 
   FiPlus, 
   FiSearch, 
@@ -21,8 +22,11 @@ import {
 } from 'react-icons/fi';
 
 const Coaches: React.FC = () => {
-  const { coaches, categories, students, addCoach, updateCoach, deleteCoach, addUser } = useAppContext();
+  const { users, categories, students, coachSpecializations, addCoach, updateCoach, deleteCoach, addUser, dispatch } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar solo usuarios con rol de coach
+  const coaches = users.filter(user => user.role === 'coach');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCoach, setEditingCoach] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -44,8 +48,7 @@ const Coaches: React.FC = () => {
   // Filter coaches
   const filteredCoaches = coaches.filter(coach => {
     const matchesSearch = (coach.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (coach.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (Array.isArray(coach.specialization) && coach.specialization.some(s => (s?.toLowerCase() || '').includes(searchTerm.toLowerCase())));
+                         (coach.email?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -143,26 +146,58 @@ const Coaches: React.FC = () => {
     };
 
     if (editingCoach) {
+      // Actualizar el coach en el array de coaches
       updateCoach(editingCoach.id, coachData);
+      
+      // También actualizar el usuario correspondiente
+      const userToUpdate = users.find(u => u.id === editingCoach.id);
+      if (userToUpdate) {
+        dispatch({ type: 'UPDATE_USER', payload: { 
+          id: editingCoach.id, 
+          user: {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            avatar: coachData.avatar,
+            specialization: formData.specialization,
+            experience: formData.experience
+          }
+        }});
+      }
+      
       setEditingCoach(null);
     } else {
-      // Create coach
-      const newCoachId = `coach_${Date.now()}`;
-      addCoach({ ...coachData, id: newCoachId });
-      
-      // Create user account for the coach
-      const userData = {
-        id: `user_${Date.now()}`,
+      // Usar la función addNewCoach de mockData
+      const result = addNewCoach({
+        name: formData.name,
         email: formData.email,
         password: password,
-        name: formData.name,
-        role: 'coach' as const,
-        avatar: coachData.avatar,
         phone: formData.phone,
+        specialization: formData.specialization,
+        experience: formData.experience,
+        certifications: formData.certifications.split(',').map(cert => cert.trim()).filter(cert => cert),
+        assignedCategories: formData.assignedCategories
+      });
+      
+      // Agregar el coach al contexto con el ID generado
+      addCoach({
+        ...coachData,
+        id: result.coach.id,
+        certifications: result.coach.certifications
+      });
+      
+      // Agregar el usuario al contexto
+      addUser({
+        id: result.coachUser.id,
+        email: result.coachUser.email,
+        password: result.coachUser.password,
+        name: result.coachUser.name,
+        role: result.coachUser.role,
+        avatar: result.coach.avatar,
+        phone: result.coachUser.phone,
         createdAt: new Date(),
         lastLogin: undefined
-      };
-      addUser(userData);
+      });
       
       // Show success modal with credentials
       setNewCoachCredentials({
@@ -220,18 +255,15 @@ const Coaches: React.FC = () => {
   };
 
   // Get students count for each coach
-  const getStudentsCount = (coachId: string) => {
-    return students.filter(student => student.coachId === coachId).length;
+  const getStudentsCount = (coachEmail: string) => {
+    return students.filter(student => {
+      const parentUser = users.find(u => u.id === student.parentId);
+      return parentUser && parentUser.email === coachEmail;
+    }).length;
   };
 
-  const specializationOptions = [
-    'Técnica',
-    'Preparación Física',
-    'Táctica',
-    'Psicología Deportiva',
-    'Nutrición',
-    'Análisis de Video'
-  ];
+  // Obtener las especializaciones activas del contexto
+  const activeSpecializations = coachSpecializations.filter(spec => spec.active);
 
   return (
     <div className="space-y-6">
@@ -243,7 +275,7 @@ const Coaches: React.FC = () => {
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center"
+          className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center"
         >
           <FiPlus className="w-4 h-4 mr-2" />
           Nuevo Entrenador
@@ -262,8 +294,8 @@ const Coaches: React.FC = () => {
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Entrenadores</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{coaches.length}</p>
             </div>
-            <div className="p-3 rounded-full bg-blue-100">
-              <FiUsers className="w-6 h-6 text-blue-600" />
+            <div className="p-3 rounded-full bg-primary/10">
+              <FiUsers className="w-6 h-6 text-primary" />
             </div>
           </div>
         </motion.div>
@@ -277,14 +309,14 @@ const Coaches: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Promedio Experiencia</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-[var(--color-success)]">
                 {coaches.length > 0 
-                  ? Math.round(coaches.reduce((sum, c) => sum + (c.experience || 0), 0) / coaches.length)
+                  ? Math.round(coaches.reduce((sum, c) => sum + ((c as any).experience || 5), 0) / coaches.length)
                   : 0} años
               </p>
             </div>
-            <div className="p-3 rounded-full bg-green-100">
-              <FiAward className="w-6 h-6 text-green-600" />
+            <div className="p-3 rounded-full bg-[var(--color-success)]/10">
+              <FiAward className="w-6 h-6 text-[var(--color-success)]" />
             </div>
           </div>
         </motion.div>
@@ -298,12 +330,12 @@ const Coaches: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Categorías Cubiertas</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {categories.filter(cat => coaches.some(coach => Array.isArray(coach.assignedCategories) && coach.assignedCategories.includes(cat.id))).length}
+              <p className="text-2xl font-bold text-accent">
+                {categories.length}
               </p>
             </div>
-            <div className="p-3 rounded-full bg-purple-100">
-              <FiCalendar className="w-6 h-6 text-purple-600" />
+            <div className="p-3 rounded-full bg-accent/10">
+              <FiCalendar className="w-6 h-6 text-accent" />
             </div>
           </div>
         </motion.div>
@@ -317,14 +349,14 @@ const Coaches: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Estudiantes/Coach</p>
-              <p className="text-2xl font-bold text-orange-600">
+              <p className="text-2xl font-bold text-[var(--color-warning)]">
                 {coaches.length > 0 
                   ? Math.round(students.length / coaches.length)
                   : 0}
               </p>
             </div>
-            <div className="p-3 rounded-full bg-orange-100">
-              <FiUsers className="w-6 h-6 text-orange-600" />
+            <div className="p-3 rounded-full bg-[var(--color-warning)]/10">
+              <FiUsers className="w-6 h-6 text-[var(--color-warning)]" />
             </div>
           </div>
         </motion.div>
@@ -339,7 +371,7 @@ const Coaches: React.FC = () => {
             placeholder="Buscar por nombre, email o especialización..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+            className="pl-10 pr-4 py-2 w-full border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-[var(--color-surface)] text-[var(--color-text)]"
           />
         </div>
       </div>
@@ -393,31 +425,32 @@ const Coaches: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
-                      {(Array.isArray(coach.specialization) ? coach.specialization : []).map((spec, index) => (
-                        <span key={index} className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                          {spec}
+                      {(coach as any).specialization && Array.isArray((coach as any).specialization) ? (
+                        (coach as any).specialization.map((spec: string, index: number) => (
+                          <span key={index} className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                            {spec}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                          Sin especialización
                         </span>
-                      ))}
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {coach.experience} años
+                    {(coach as any).experience || 5} años
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                      {getStudentsCount(coach.id)} estudiantes
+                    <span className="px-2 py-1 text-xs font-medium bg-[var(--color-success)]/10 text-[var(--color-success)] rounded-full">
+                      {getStudentsCount(coach.email)} estudiantes
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
-                      {(Array.isArray(coach.assignedCategories) ? coach.assignedCategories : []).map(catId => {
-                        const category = categories.find(c => c.id === catId);
-                        return category ? (
-                          <span key={catId} className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-                            {category.name}
-                          </span>
-                        ) : null;
-                      })}
+                      <span className="px-2 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full">
+                        Todas
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -470,7 +503,7 @@ const Coaches: React.FC = () => {
 
       {/* Add/Edit Coach Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -504,7 +537,7 @@ const Coaches: React.FC = () => {
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] focus:ring-accent focus:border-accent"
                     />
                   </div>
 
@@ -518,7 +551,7 @@ const Coaches: React.FC = () => {
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                       disabled={editingCoach}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                      className="input-field bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] disabled:bg-gray-100 dark:disabled:bg-gray-600 focus:ring-accent focus:border-accent"
                     />
                     {!editingCoach && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -602,18 +635,23 @@ const Coaches: React.FC = () => {
                     Especialización *
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {specializationOptions.map(spec => (
-                      <label key={spec} className="flex items-center">
+                    {activeSpecializations.map(spec => (
+                      <label key={spec.id} className="flex items-center">
                         <input
                           type="checkbox"
-                          checked={formData.specialization.includes(spec)}
-                          onChange={() => handleSpecializationChange(spec)}
+                          checked={formData.specialization.includes(spec.name)}
+                          onChange={() => handleSpecializationChange(spec.name)}
                           className="mr-2"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{spec}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{spec.name}</span>
                       </label>
                     ))}
                   </div>
+                  {activeSpecializations.length === 0 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                      No hay especializaciones activas. Por favor, configure las especializaciones primero.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -689,11 +727,11 @@ const Coaches: React.FC = () => {
                       setEditingCoach(null);
                       resetForm();
                     }}
-                    className="btn-secondary flex-1"
+                    className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors flex-1"
                   >
                     Cancelar
                   </button>
-                  <button type="submit" className="btn-primary flex-1">
+                  <button type="submit" className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex-1">
                     {editingCoach ? 'Actualizar' : 'Crear'} Entrenador
                   </button>
                 </div>
@@ -705,7 +743,7 @@ const Coaches: React.FC = () => {
 
       {/* Credentials Modal */}
       {showCredentialsModal && selectedCoachCredentials && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -800,7 +838,7 @@ const Coaches: React.FC = () => {
                   setCopiedEmail(false);
                   setCopiedPassword(false);
                 }}
-                className="w-full btn-primary"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors"
               >
                 Cerrar
               </button>
@@ -811,7 +849,7 @@ const Coaches: React.FC = () => {
 
       {/* Success Modal for New Coach */}
       {showSuccessModal && newCoachCredentials && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -900,7 +938,7 @@ const Coaches: React.FC = () => {
                   );
                   window.open(`mailto:${newCoachCredentials.email}?subject=${subject}&body=${body}`, '_blank');
                 }}
-                className="flex-1 btn-secondary flex items-center justify-center"
+                className="flex-1 bg-accent hover:bg-accent/90 text-primary font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
               >
                 <FiMail className="w-4 h-4 mr-2" />
                 Enviar por email
@@ -913,7 +951,7 @@ const Coaches: React.FC = () => {
                   setCopiedPassword(false);
                   setShowPassword(false);
                 }}
-                className="flex-1 btn-primary"
+                className="flex-1 bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors"
               >
                 Entendido
               </button>

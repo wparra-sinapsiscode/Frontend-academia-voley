@@ -128,12 +128,6 @@ const ParentPayments: React.FC = () => {
       setSelectedImageFile(file);
       setImagePreview(thumbnail);
       
-      console.log('Imagen procesada:', {
-        fileName: processedImage.fileName,
-        originalSize: formatFileSize(processedImage.originalSize),
-        finalSize: formatFileSize(processedImage.fileSize),
-        compressed: processedImage.compressed
-      });
       
     } catch (error) {
       console.error('Error procesando imagen:', error);
@@ -171,6 +165,76 @@ const ParentPayments: React.FC = () => {
   // Get payments for this student
   const studentPayments = payments.filter(p => p.studentId === myStudent.id);
   
+  // CONSOLA: Debug de pagos en ParentPayments
+  console.log('👨‍👩‍👧‍👦 PARENT PAYMENTS - Debug:', {
+    studentId: myStudent.id,
+    studentName: myStudent.name,
+    totalPaymentsInContext: payments.length,
+    studentPayments: studentPayments.length,
+    allPayments: payments.map(p => ({
+      id: p.id,
+      studentId: p.studentId,
+      amount: p.amount,
+      status: p.status,
+      approved: p.approved,
+      rejected: p.rejected,
+      pendingApproval: p.pendingApproval
+    })),
+    studentPaymentsDetail: studentPayments.map(p => ({
+      id: p.id,
+      amount: p.amount,
+      status: p.status,
+      approved: p.approved,
+      rejected: p.rejected,
+      pendingApproval: p.pendingApproval,
+      description: p.description,
+      dueDate: p.dueDate
+    }))
+  });
+  
+  // CONSOLA: Array completo del historial de pagos
+  console.log('📋 HISTORIAL DE PAGOS - Array completo:', studentPayments);
+  
+  // CONSOLA: Historial de pagos formateado
+  console.log('📊 HISTORIAL DE PAGOS - Formateado:', 
+    studentPayments.map((payment, index) => ({
+      index: index + 1,
+      id: payment.id,
+      descripcion: payment.description,
+      monto: `S/ ${payment.amount}`,
+      estado: payment.status,
+      fechaVencimiento: payment.dueDate?.toLocaleDateString('es-ES'),
+      fechaPago: payment.paidDate?.toLocaleDateString('es-ES') || 'No pagado',
+      metodo: payment.method || 'No especificado',
+      aprobado: payment.approved ? 'Sí' : 'No',
+      rechazado: payment.rejected ? 'Sí' : 'No',
+      pendienteAprobacion: payment.pendingApproval ? 'Sí' : 'No',
+      tieneComprobante: payment.voucherImage || payment.voucherUrl ? 'Sí' : 'No',
+      voucherImage: payment.voucherImage ? payment.voucherImage.substring(0, 100) + '...' : 'No tiene imagen base64',
+      voucherUrl: payment.voucherUrl || 'No tiene URL',
+      voucherFileName: payment.voucherFileName || 'Sin nombre de archivo',
+      voucherFileSize: payment.voucherFileSize || 0,
+      voucherThumbnail: payment.voucherThumbnail ? 'Tiene thumbnail' : 'No tiene thumbnail',
+      razonRechazo: payment.rejectionReason || 'N/A'
+    }))
+  );
+  
+  // CONSOLA: Imágenes de comprobantes
+  console.log('🖼️ COMPROBANTES DE PAGO - URLs e imágenes:', 
+    studentPayments
+      .filter(p => p.voucherImage || p.voucherUrl)
+      .map((payment, index) => ({
+        index: index + 1,
+        id: payment.id,
+        descripcion: payment.description,
+        imagenUtilizada: getVoucherImageUrl(payment),
+        tieneImagenBase64: !!payment.voucherImage,
+        tieneVoucherUrl: !!payment.voucherUrl,
+        voucherUrl: payment.voucherUrl,
+        nombreArchivo: payment.voucherFileName
+      }))
+  );
+  
   // Get available years dynamically
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -187,31 +251,39 @@ const ParentPayments: React.FC = () => {
   
   const currentYearPayments = studentPayments.filter(p => p.dueDate.getFullYear() === selectedYear);
   
-  // Calculate statistics - MEJORADA LÓGICA DE CÁLCULOS
+  // Calculate statistics - CORREGIDA LÓGICA DE CÁLCULOS
   
-  // Total Pagado: Solo pagos completamente aprobados (todos los años)
-  const totalPaid = studentPayments
-    .filter(p => 
-      p.status === 'paid' && 
-      p.approved === true && 
-      p.rejected !== true
-    )
-    .reduce((sum, p) => sum + p.amount, 0);
-  
-  // Pendiente: Pagos del año actual que necesitan atención
-  // Incluye: pendientes, vencidos, y rechazados (independiente del año si fueron rechazados)
-  const pendingPayments = currentYearPayments.filter(p => 
-    (p.status === 'pending' || p.status === 'overdue') ||
-    (p.rejected === true)
+  // Pendiente: Solo pagos pendientes puros (sin incluir vencidos)
+  // Incluye: pagos pending/pendiente y rejected
+  const pendingPayments = studentPayments.filter(p => 
+    (p.status === 'pending' || p.status === 'pendiente') ||
+    p.rejected === true
   );
   
-  // Vencidos: Solo pagos overdue del año actual que no han sido pagados y aprobados
-  const overduePayments = currentYearPayments.filter(p => 
-    p.status === 'overdue' && 
-    !(p.status === 'paid' && p.approved === true)
+  // Vencidos: Solo pagos con status 'overdue' o 'vencido'
+  const overduePayments = studentPayments.filter(p => 
+    p.status === 'overdue' || p.status === 'vencido'
   );
   
   const totalPending = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
+  
+  // CONSOLA: Debug de cálculos de estadísticas
+  console.log('📊 PARENT PAYMENTS - Estadísticas calculadas:', {
+    pendingPayments: pendingPayments.map(p => ({
+      id: p.id,
+      amount: p.amount,
+      status: p.status,
+      rejected: p.rejected
+    })),
+    overduePayments: overduePayments.map(p => ({
+      id: p.id,
+      amount: p.amount,
+      status: p.status
+    })),
+    totalPending,
+    pendingCount: pendingPayments.length,
+    overdueCount: overduePayments.length
+  });
   
   // Obtener monto de mensualidad dinámicamente de la categoría del estudiante
   const studentCategory = categories.find(c => c.id === myStudent.categoryId);
@@ -236,7 +308,7 @@ const ParentPayments: React.FC = () => {
   const getStatusBadge = (payment: any) => {
     const status = payment.status;
     
-    if (status === 'paid') {
+    if (status === 'paid' || status === 'pagado') {
       if (payment.rejected) {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
@@ -266,14 +338,14 @@ const ParentPayments: React.FC = () => {
           </span>
         );
       }
-    } else if (status === 'pending') {
+    } else if (status === 'pending' || status === 'pendiente') {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
           <FiClock className="w-3 h-3" />
           Pendiente
         </span>
       );
-    } else if (status === 'overdue') {
+    } else if (status === 'overdue' || status === 'vencido') {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
           <FiAlertCircle className="w-3 h-3" />
@@ -293,10 +365,17 @@ const ParentPayments: React.FC = () => {
       return 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20';
     }
     switch (payment.status) {
-      case 'paid': return 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20';
-      case 'pending': return 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20';
-      case 'overdue': return 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20';
-      default: return 'border-gray-200 dark:border-gray-700';
+      case 'paid':
+      case 'pagado': 
+        return 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20';
+      case 'pending':
+      case 'pendiente': 
+        return 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20';
+      case 'overdue':
+      case 'vencido': 
+        return 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20';
+      default: 
+        return 'border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -361,28 +440,10 @@ const ParentPayments: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Pagado</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">S/ {totalPaid.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">Pagos aprobados</p>
-            </div>
-            <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
-              <FiCheck className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
           className="card"
         >
           <div className="flex items-center justify-between">
@@ -400,14 +461,18 @@ const ParentPayments: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.1 }}
           className="card"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Vencidos</p>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{overduePayments.length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">Requieren atención</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                {overduePayments.length > 0 ? `S/ ${overduePayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}` : 'S/ 0'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">
+                {overduePayments.length} pago{overduePayments.length !== 1 ? 's' : ''}
+              </p>
             </div>
             <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30">
               <FiAlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
@@ -418,7 +483,7 @@ const ParentPayments: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.2 }}
           className="card"
         >
           <div className="flex items-center justify-between">
@@ -576,32 +641,7 @@ const ParentPayments: React.FC = () => {
                       >
                         <FiEye size={20} />
                       </button>
-                      {payment.status === 'paid' && !payment.rejected && payment.approved ? (
-                      <button 
-                        className="btn-secondary text-sm"
-                        onClick={() => {
-                          // Preparar el pago para el formato que espera el componente de comprobante
-                          const formattedPayment = {
-                            id: payment.id,
-                            studentId: payment.studentId,
-                            studentName: myStudent.name,
-                            amount: payment.amount,
-                            type: payment.period,
-                            typeName: payment.description,
-                            method: payment.method || 'card',
-                            status: payment.status,
-                            date: payment.paidDate ? payment.paidDate.toISOString().split('T')[0] : '',
-                            dueDate: payment.dueDate.toISOString().split('T')[0],
-                            description: payment.description
-                          };
-                          setSelectedPayment(formattedPayment);
-                          setShowReceiptModal(true);
-                        }}
-                      >
-                        <FiFileText className="w-4 h-4 mr-2" />
-                        Ver Comprobante
-                      </button>
-                    ) : payment.status === 'paid' && payment.pendingApproval ? (
+                      {payment.status === 'paid' && payment.pendingApproval ? (
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
                         <FiClock className="w-4 h-4" />
                         Esperando aprobación
@@ -614,7 +654,7 @@ const ParentPayments: React.FC = () => {
                         <FiCreditCard className="w-4 h-4 mr-2" />
                         Reintentar pago
                       </button>
-                    ) : (
+                    ) : payment.status !== 'paid' && payment.status !== 'pagado' ? (
                       <button 
                         onClick={() => handlePayment(payment.id)}
                         className="btn-primary text-sm"
@@ -622,7 +662,7 @@ const ParentPayments: React.FC = () => {
                         <FiCreditCard className="w-4 h-4 mr-2" />
                         Pagar S/ {payment.amount}
                       </button>
-                    )}
+                    ) : null}
                     </div>
                   </div>
                 </div>
@@ -696,7 +736,6 @@ const ParentPayments: React.FC = () => {
             setSelectedPayment(null);
           }}
           onSend={(email) => {
-            console.log(`Enviando comprobante a ${email}`);
             // Aquí iría la lógica para enviar el comprobante por correo (en una app real)
           }}
         />
@@ -704,7 +743,7 @@ const ParentPayments: React.FC = () => {
 
       {/* Register Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -775,9 +814,7 @@ const ParentPayments: React.FC = () => {
                   };
                   
                   // Agregar el pago usando la función del contexto
-                  console.log('🔄 Creando nuevo pago desde padre:', newPayment);
                   addPayment(newPayment);
-                  console.log('✅ Pago creado y enviado al contexto');
                 }
                 
                 // Limpiar estado de imagen
@@ -1001,7 +1038,7 @@ const ParentPayments: React.FC = () => {
       
       {/* Voucher Modal */}
       {showVoucherModal && selectedVoucherUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setShowVoucherModal(false)}>
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-[9999] p-4" onClick={() => setShowVoucherModal(false)}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1088,7 +1125,7 @@ const ParentPayments: React.FC = () => {
       
       {/* Payment Specifications Modal */}
       {showSpecsModal && selectedPaymentSpecs && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

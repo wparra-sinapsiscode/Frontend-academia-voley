@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../contexts/AppContext';
+// import { mockClassPlans } from '../../data/mockData'; // No necesario - solo mostramos clases del usuario
 import { 
   FiUsers, 
   FiCalendar, 
@@ -28,7 +29,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const CoachDashboard: React.FC = () => {
-  const { user, students, schedules, attendances, evaluations, darkMode } = useAppContext();
+  const { user, students, schedules, attendances, evaluations, darkMode, categories, classPlans } = useAppContext();
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [attendanceMarked, setAttendanceMarked] = useState(false);
@@ -46,56 +47,265 @@ const CoachDashboard: React.FC = () => {
     }
   }, [attendanceMarks]);
 
-  // Find students assigned to this coach
-  const myStudents = students.filter(s => s.coachId === user?.id);
+  // Find students assigned to this coach through categories
+  const myStudents = students.filter(s => {
+    const studentCategory = categories.find(c => c.id === s.categoryId);
+    return studentCategory?.coachId === user?.id;
+  });
   const mySchedules = schedules.filter(s => s.coachId === user?.id);
+
+  // 🔍 DEBUG: Log all classes for this coach
+  React.useEffect(() => {
+    if (user?.id) {
+      // Get user-created classes for this coach
+      const userClassesForCoach = (classPlans || []).filter(classItem => classItem.coachId === user.id);
+      
+      console.log('🎯 CLASES DEL COACH (SOLO CREADAS POR USUARIO):', {
+        coachName: user.name,
+        coachId: user.id,
+        totalClases: userClassesForCoach.length,
+        todasLasClases: userClassesForCoach.map(clase => ({
+          id: clase.id,
+          titulo: clase.title,
+          categoria: clase.category,
+          fecha: clase.date,
+          hora: clase.startTime,
+          ubicacion: clase.location,
+          objetivos: clase.objectives
+        }))
+      });
+      
+      // 📋 ARRAY COMPLETO DE ASISTENCIAS DEL COACH
+      const myStudentAttendances = attendances.filter(a => 
+        myStudents.some(s => s.id === a.studentId)
+      );
+      
+      console.log('📋 ARRAY COMPLETO DE ASISTENCIAS - COACH DASHBOARD:', {
+        coachName: user.name,
+        coachId: user.id,
+        totalStudents: myStudents.length,
+        totalAttendanceRecords: myStudentAttendances.length,
+        studentsWithAttendance: [...new Set(myStudentAttendances.map(a => a.studentId))].length,
+        attendancesByStudent: myStudents.map(student => {
+          const studentAttendances = myStudentAttendances.filter(a => a.studentId === student.id);
+          const presentCount = studentAttendances.filter(a => a.present).length;
+          const absentCount = studentAttendances.filter(a => !a.present).length;
+          const attendanceRate = studentAttendances.length > 0 ? (presentCount / studentAttendances.length * 100).toFixed(1) : 0;
+          
+          return {
+            studentId: student.id,
+            studentName: student.name,
+            totalRecords: studentAttendances.length,
+            presentes: presentCount,
+            ausentes: absentCount,
+            porcentajeAsistencia: attendanceRate + '%',
+            ultimaAsistencia: studentAttendances.length > 0 ? 
+              studentAttendances.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date.toLocaleDateString('es-ES') : 'Sin registros'
+          };
+        }),
+        allAttendanceRecords: myStudentAttendances
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .map(a => ({
+            id: a.id,
+            studentId: a.studentId,
+            studentName: myStudents.find(s => s.id === a.studentId)?.name || 'N/A',
+            fecha: a.date.toLocaleDateString('es-ES'),
+            hora: a.date.toLocaleTimeString('es-ES'),
+            presente: a.present,
+            marcadoPor: a.checkedBy === user.id ? 'Coach' : 'Padre',
+            notas: a.notes || 'Sin notas'
+          }))
+      });
+
+      // 📊 PROGRESO TÉCNICO DE ESTUDIANTES
+      const technicalProgressData = myStudents.map(student => {
+        const studentEvaluations = evaluations.filter(e => e.studentId === student.id);
+        const latestEval = studentEvaluations.length > 0 
+          ? studentEvaluations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+          : null;
+        
+        const technicalAverage = latestEval 
+          ? ((latestEval.technical.serve + latestEval.technical.spike + 
+              latestEval.technical.block + latestEval.technical.dig + 
+              latestEval.technical.set) / 5) * 10
+          : 0;
+
+        const physicalAverage = latestEval
+          ? ((latestEval.physical.endurance + latestEval.physical.strength + 
+              latestEval.physical.agility + latestEval.physical.jump) / 4) * 10
+          : 0;
+
+        const mentalAverage = latestEval
+          ? ((latestEval.mental.focus + latestEval.mental.teamwork + 
+              latestEval.mental.leadership + latestEval.mental.attitude) / 4) * 10
+          : 0;
+
+        return {
+          studentId: student.id,
+          studentName: student.name,
+          evaluacionesTotales: studentEvaluations.length,
+          ultimaEvaluacion: latestEval?.date.toLocaleDateString('es-ES') || 'Sin evaluaciones',
+          promedioTecnico: Math.round(technicalAverage),
+          promedioFisico: Math.round(physicalAverage),
+          promedioMental: Math.round(mentalAverage),
+          promedioGeneral: Math.round((technicalAverage + physicalAverage + mentalAverage) / 3),
+          detallesTecnicos: latestEval ? {
+            saque: latestEval.technical.serve * 10,
+            remate: latestEval.technical.spike * 10,
+            bloqueo: latestEval.technical.block * 10,
+            defensa: latestEval.technical.dig * 10,
+            colocacion: latestEval.technical.set * 10
+          } : null
+        };
+      });
+
+      console.log('📊 PROGRESO TÉCNICO - COACH DASHBOARD:', {
+        coachName: user.name,
+        totalStudents: myStudents.length,
+        studentsWithEvaluations: technicalProgressData.filter(s => s.evaluacionesTotales > 0).length,
+        averageTechnicalScore: technicalProgressData.length > 0 
+          ? Math.round(technicalProgressData.reduce((sum, s) => sum + s.promedioTecnico, 0) / technicalProgressData.length)
+          : 0,
+        studentProgress: technicalProgressData,
+        topPerformers: technicalProgressData
+          .filter(s => s.promedioGeneral > 0)
+          .sort((a, b) => b.promedioGeneral - a.promedioGeneral)
+          .slice(0, 3)
+          .map(s => ({
+            nombre: s.studentName,
+            promedio: s.promedioGeneral,
+            tecnico: s.promedioTecnico,
+            fisico: s.promedioFisico,
+            mental: s.promedioMental
+          }))
+      });
+      
+      // Also log available classPlans in context
+      console.log('🔧 CONTEXT classPlans:', {
+        total: classPlans?.length || 0,
+        clasesEnContext: (classPlans || []).map(cp => ({
+          id: cp.id,
+          titulo: cp.title,
+          categoria: cp.category,
+          coachId: cp.coachId,
+          fecha: cp.date
+        }))
+      });
+    }
+  }, [user?.id, classPlans, myStudents, attendances, evaluations]);
   
   // Mock today's classes (estas serían las clases creadas en ClassManagement)
-  const today = new Date().toISOString().split('T')[0];
+  // Use Lima timezone (UTC-5) - 2 de junio de 2025 (lunes)
+  const today = '2025-06-02'; // ISO format YYYY-MM-DD
   const [classStatuses, setClassStatuses] = useState<{[key: string]: 'not-started' | 'in-progress' | 'paused' | 'completed' | 'cancelled'}>({
     'today-1': 'not-started' // Default status
   });
   
+  // Get only user-created classes for today (2025-06-02)
+  const todaysRealClasses = React.useMemo(() => {
+    if (!user?.id || !classPlans) return [];
+    
+    return classPlans.filter(classItem => {
+      // Handle both Date objects and string dates
+      let classDate: string;
+      if (classItem.date instanceof Date) {
+        classDate = classItem.date.toISOString().split('T')[0]; // Convert Date to YYYY-MM-DD
+      } else if (typeof classItem.date === 'string') {
+        // If it's already a string, make sure it's in YYYY-MM-DD format
+        classDate = classItem.date.split('T')[0]; // Handle ISO strings
+      } else {
+        classDate = ''; // Invalid date
+      }
+      
+      const isToday = classDate === today; // 2025-06-02
+      const isMyClass = classItem.coachId === user.id;
+      
+      console.log('🔍 VERIFICANDO CLASE PARA HOY (2/6/2025):', {
+        classId: classItem.id,
+        classTitle: classItem.title,
+        classDate: classDate,
+        today: today,
+        isToday: isToday,
+        coachId: classItem.coachId,
+        myId: user.id,
+        isMyClass: isMyClass
+      });
+      
+      return isToday && isMyClass;
+    });
+  }, [classPlans, user?.id, today]);
+
+  // Debug log for today's classes
+  React.useEffect(() => {
+    console.log('📅 CLASES CREADAS POR EL USUARIO - HOY:', {
+      today: today,
+      totalUserClasses: classPlans?.length || 0,
+      todaysUserClasses: todaysRealClasses.length,
+      userClassesList: todaysRealClasses.map(c => ({
+        id: c.id,
+        title: c.title,
+        startTime: c.startTime,
+        endTime: c.endTime,
+        date: c.date,
+        category: c.category,
+        location: c.location
+      }))
+    });
+  }, [todaysRealClasses, today, classPlans]);
+
   const todaysClasses = [
-    // Ejemplo de clase para hoy
-    ...(today === new Date().toISOString().split('T')[0] ? [{
-      id: 'today-1',
-      title: 'Técnica de Remate',
-      time: '16:00',
-      endTime: '17:30',
-      duration: 90,
-      location: 'Cancha Principal',
-      category: 'Juvenil A',
-      maxStudents: 12,
-      enrolledStudents: ['1', '2', '3', '4', '5', '6', '7', '8'],
-      objectives: [
-        'Mejorar técnica de aproximación al remate',
-        'Perfeccionar timing de salto',
-        'Aumentar potencia de golpeo',
-        'Desarrollar coordinación brazos-piernas'
-      ],
-      materials: [
-        { id: 'm1', name: 'Balones de voleibol', type: 'equipment', description: '12 balones oficiales', required: true },
-        { id: 'm2', name: 'Conos marcadores', type: 'equipment', description: '8 conos para delimitar zonas', required: true },
-        { id: 'm3', name: 'Video técnica de remate', type: 'video', url: 'https://youtube.com/watch?v=ejemplo', required: false },
-        { id: 'm4', name: 'Red portátil', type: 'equipment', description: 'Red regulamentaria', required: true }
-      ],
-      warmUpPlan: '10 min - Trote suave alrededor de la cancha y movilidad articular específica para hombros y tobillos',
-      mainActivityPlan: '60 min - Progresión técnica: (15min) aproximación sin balón, (20min) salto y golpeo estático, (25min) remate completo con diferentes ángulos',
-      coolDownPlan: '20 min - Estiramientos específicos para brazos, hombros y piernas. Ejercicios de respiración y relajación',
-      notes: 'Enfocarse especialmente en la mecánica del salto. Estudiantes con dificultades: María (timing) y Ana (potencia). Revisar técnica individual.',
-      status: classStatuses['today-1'] || 'not-started',
-      coachId: user?.id || '',
-      date: today
-    }] : [])
+    // Real classes (both mock and context)
+    ...todaysRealClasses.map(classItem => {
+      // Find students for this class category
+      const enrolledStudents = myStudents.filter(s => {
+        const studentCategory = categories.find(c => c.id === s.categoryId);
+        return studentCategory?.name === classItem.category;
+      });
+
+      return {
+        ...classItem,
+        id: classItem.id,
+        title: classItem.title,
+        time: classItem.startTime,
+        endTime: classItem.endTime,
+        duration: classItem.duration,
+        location: classItem.location,
+        category: classItem.category,
+        objectives: classItem.objectives,
+        materials: Array.isArray(classItem.materials) 
+          ? classItem.materials.map((material, index) => ({
+              id: `m${index + 1}`,
+              name: material,
+              type: 'equipment',
+              description: material,
+              required: true
+            }))
+          : classItem.materials,
+        warmUpPlan: typeof classItem.warmUpPlan === 'object' && classItem.warmUpPlan.exercises
+          ? classItem.warmUpPlan.exercises.map(ex => ex.description).join(', ')
+          : classItem.warmUpPlan || 'Calentamiento estándar',
+        mainActivityPlan: typeof classItem.mainActivityPlan === 'object' && classItem.mainActivityPlan.exercises
+          ? classItem.mainActivityPlan.exercises.map(ex => ex.description).join(', ')
+          : classItem.mainActivityPlan || 'Actividad principal',
+        coolDownPlan: typeof classItem.coolDownPlan === 'object' && classItem.coolDownPlan.exercises
+          ? classItem.coolDownPlan.exercises.map(ex => ex.description).join(', ')
+          : classItem.coolDownPlan || 'Enfriamiento',
+        notes: classItem.notes || '',
+        enrolledStudents: enrolledStudents.map(s => s.id),
+        maxStudents: enrolledStudents.length + 5, // Set reasonable max
+        status: classStatuses[classItem.id] || 'not-started',
+        coachId: classItem.coachId,
+        date: classItem.date
+      };
+    }),
   ];
   
   // Calculate stats
   const totalStudents = myStudents.length;
-  const todayAttendances = attendances.filter(a => 
-    new Date(a.date).toDateString() === new Date().toDateString() && 
-    myStudents.some(s => s.id === a.studentId)
-  );
+  const todayAttendances = attendances.filter(a => {
+    const attendanceDate = a.date.toISOString().split('T')[0];
+    return attendanceDate === today && myStudents.some(s => s.id === a.studentId);
+  });
   const attendanceRate = todayAttendances.length > 0 
     ? Math.round((todayAttendances.filter(a => a.present).length / todayAttendances.length) * 100)
     : 0;
@@ -297,24 +507,108 @@ const CoachDashboard: React.FC = () => {
     }
   };
 
-  // Sample data for charts
-  const weeklyAttendance = [
-    { day: 'Lun', asistencia: 92 },
-    { day: 'Mar', asistencia: 88 },
-    { day: 'Mie', asistencia: 94 },
-    { day: 'Jue', asistencia: 86 },
-    { day: 'Vie', asistencia: 90 },
-    { day: 'Sab', asistencia: 85 }
-  ];
+  // Real data for charts based on actual attendances and evaluations
+  const weeklyAttendance = React.useMemo(() => {
+    const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+    const today = new Date();
+    const currentWeekStart = new Date(today.setDate(today.getDate() - today.getDay()));
+    
+    return daysOfWeek.map((day, index) => {
+      const dayDate = new Date(currentWeekStart);
+      dayDate.setDate(currentWeekStart.getDate() + index);
+      
+      // Get attendances for this day for coach's students
+      const dayAttendances = attendances.filter(a => {
+        const attendanceDate = new Date(a.date);
+        return attendanceDate.toDateString() === dayDate.toDateString() &&
+               myStudents.some(s => s.id === a.studentId);
+      });
+      
+      const presentCount = dayAttendances.filter(a => a.present).length;
+      const totalCount = dayAttendances.length;
+      const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+      
+      return {
+        day,
+        asistencia: attendanceRate,
+        total: totalCount,
+        presentes: presentCount
+      };
+    });
+  }, [attendances, myStudents]);
 
-  const progressData = [
-    { month: 'Jul', promedio: 65 },
-    { month: 'Ago', promedio: 70 },
-    { month: 'Sep', promedio: 73 },
-    { month: 'Oct', promedio: 78 },
-    { month: 'Nov', promedio: 82 },
-    { month: 'Dic', promedio: avgTechnicalScore }
-  ];
+  const progressData = React.useMemo(() => {
+    const months = ['Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const currentDate = new Date();
+    
+    return months.map((month, index) => {
+      const monthDate = new Date(currentDate.getFullYear(), 6 + index, 1); // July = 6
+      
+      // Get evaluations for this month for coach's students
+      const monthEvaluations = evaluations.filter(e => {
+        const evalDate = new Date(e.date);
+        return evalDate.getMonth() === monthDate.getMonth() &&
+               evalDate.getFullYear() === monthDate.getFullYear() &&
+               myStudents.some(s => s.id === e.studentId);
+      });
+      
+      // Calculate average technical score for the month
+      let averageScore = 0;
+      if (monthEvaluations.length > 0) {
+        const totalScore = monthEvaluations.reduce((sum, evaluation) => {
+          const techAvg = (evaluation.technical.serve + evaluation.technical.spike + 
+                          evaluation.technical.block + evaluation.technical.dig + evaluation.technical.set) / 5;
+          return sum + (techAvg * 10);
+        }, 0);
+        averageScore = Math.round(totalScore / monthEvaluations.length);
+      } else if (index === months.length - 1) {
+        // For current month, use current average
+        averageScore = avgTechnicalScore;
+      } else {
+        // For previous months without data, use a baseline progression
+        averageScore = Math.max(0, avgTechnicalScore - (months.length - 1 - index) * 5);
+      }
+      
+      return {
+        month,
+        promedio: averageScore,
+        evaluaciones: monthEvaluations.length
+      };
+    });
+  }, [evaluations, myStudents, avgTechnicalScore]);
+
+  // 📈 DATOS DE GRÁFICOS EN TIEMPO REAL
+  React.useEffect(() => {
+    if (user?.id && myStudents.length > 0) {
+      console.log('📈 DATOS DE GRÁFICOS - COACH DASHBOARD:', {
+        coachName: user.name,
+        graficoAsistenciaSemanal: {
+          titulo: 'Asistencia Semanal',
+          datos: weeklyAttendance,
+          resumen: {
+            promedioPorcentaje: weeklyAttendance.length > 0 
+              ? Math.round(weeklyAttendance.reduce((sum, day) => sum + day.asistencia, 0) / weeklyAttendance.length)
+              : 0,
+            totalRegistros: weeklyAttendance.reduce((sum, day) => sum + day.total, 0),
+            totalPresentes: weeklyAttendance.reduce((sum, day) => sum + day.presentes, 0),
+            diasConClases: weeklyAttendance.filter(day => day.total > 0).length
+          }
+        },
+        graficoProgresoTecnico: {
+          titulo: 'Progreso Técnico Mensual',
+          datos: progressData,
+          resumen: {
+            promedioActual: avgTechnicalScore,
+            mejorMes: progressData.reduce((best, month) => month.promedio > best.promedio ? month : best, progressData[0]),
+            tendencia: progressData.length > 1 
+              ? (progressData[progressData.length - 1].promedio - progressData[progressData.length - 2].promedio) 
+              : 0,
+            mesesConEvaluaciones: progressData.filter(month => month.evaluaciones > 0).length
+          }
+        }
+      });
+    }
+  }, [user?.id, myStudents, weeklyAttendance, progressData, avgTechnicalScore]);
 
   const statsCards = [
     {
@@ -506,7 +800,7 @@ const CoachDashboard: React.FC = () => {
       </div>
 
       {/* Students and Schedule Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* My Students */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -518,34 +812,70 @@ const CoachDashboard: React.FC = () => {
             <FiUsers className="w-5 h-5" />
             Mis Estudiantes
           </h3>
-          <div className="space-y-4 max-h-64 overflow-y-auto">
-            {myStudents.slice(0, 5).map((student) => (
-              <div key={student.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                <img
-                  src={student.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150'}
-                  alt={student.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{student.name}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{student.category.name} • {student.age} años</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <FiStar className="w-4 h-4 text-yellow-500" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{student.stats.technicalScore}</span>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {myStudents.slice(0, 8).map((student) => {
+              // Calculate student's technical score from latest evaluation
+              const studentEvals = evaluations.filter(e => e.studentId === student.id);
+              const latestEval = studentEvals.length > 0 
+                ? studentEvals.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+                : null;
+              
+              const technicalScore = latestEval 
+                ? Math.round(((latestEval.technical.serve + latestEval.technical.spike + 
+                              latestEval.technical.block + latestEval.technical.dig + 
+                              latestEval.technical.set) / 5) * 10) / 10
+                : 0;
+
+              // Calculate attendance rate
+              const studentAttendances = attendances.filter(a => a.studentId === student.id);
+              const attendanceRate = studentAttendances.length > 0
+                ? Math.round((studentAttendances.filter(a => a.present).length / studentAttendances.length) * 100)
+                : 0;
+
+              // Get student category
+              const studentCategory = categories.find(c => c.id === student.categoryId);
+
+              return (
+                <div key={student.id} className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600">
+                  <img
+                    src={student.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150'}
+                    alt={student.name}
+                    className="w-12 h-12 rounded-full object-cover ring-2 ring-white dark:ring-gray-600"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{student.name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {studentCategory?.name || 'Sin categoría'} • {student.age} años
+                    </p>
                   </div>
-                  <div className={`w-2 h-2 rounded-full ${
-                    student.stats.attendance >= 90 ? 'bg-green-500' :
-                    student.stats.attendance >= 80 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`} />
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <FiStar className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                        {technicalScore > 0 ? technicalScore : '--'}
+                      </span>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${
+                      attendanceRate >= 90 ? 'bg-green-500' :
+                      attendanceRate >= 80 ? 'bg-yellow-500' : 
+                      attendanceRate > 0 ? 'bg-red-500' : 'bg-gray-400'
+                    }`} title={`${attendanceRate}% asistencia`} />
+                  </div>
                 </div>
-              </div>
-            ))}
-            {myStudents.length > 5 && (
+              );
+            })}
+            {myStudents.length > 8 && (
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                y {myStudents.length - 5} estudiantes más...
+                y {myStudents.length - 8} estudiantes más...
               </p>
+            )}
+            {myStudents.length === 0 && (
+              <div className="text-center py-8">
+                <FiUsers className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  No tienes estudiantes asignados aún
+                </p>
+              </div>
             )}
           </div>
         </motion.div>
@@ -570,8 +900,8 @@ const CoachDashboard: React.FC = () => {
               return (
                 <div key={classItem.id} className={`flex items-center gap-4 p-4 rounded-lg border ${getClassCardBackground(classItem.id)}`}>
                   <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                      <FiTarget className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                      <FiTarget className="w-6 h-6 text-primary" />
                     </div>
                   </div>
                   <div className="flex-1">
@@ -651,33 +981,8 @@ const CoachDashboard: React.FC = () => {
               );
             })}
             
-            {/* Mostrar schedules regulares */}
-            {mySchedules.map((schedule) => (
-              <div key={schedule.id} className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-                    <FiClock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {schedule.startTime} - {schedule.endTime}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][schedule.dayOfWeek]} • {schedule.location}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {students.filter(s => s.categoryId === schedule.categoryId).length || 0} estudiantes
-                  </p>
-                </div>
-                <button className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm py-2 px-4 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2">
-                  <FiCalendar className="w-4 h-4" />
-                  Ver Horario
-                </button>
-              </div>
-            ))}
             
-            {mySchedules.length === 0 && todaysClasses.length === 0 && (
+            {todaysClasses.length === 0 && (
               <p className="text-gray-500 dark:text-gray-400 text-center py-8">
                 No hay clases programadas para hoy
               </p>
@@ -717,14 +1022,14 @@ const CoachDashboard: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
             onClick={() => setSelectedClass(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">
@@ -948,14 +1253,14 @@ const CoachDashboard: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
             onClick={() => setShowCalendarModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">
@@ -1033,9 +1338,9 @@ const CalendarView: React.FC<{ attendanceMarks: {[key: string]: { time: string; 
           onClick={() => setSelectedDate(date)}
           className={`
             p-2 rounded-lg transition-all relative
-            ${isToday ? 'bg-primary-100 dark:bg-primary-900/30 font-bold' : ''}
-            ${isSelected ? 'ring-2 ring-primary-500' : ''}
-            ${hasAttendance ? 'bg-green-50 dark:bg-green-900/20' : ''}
+            ${isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : ''}
+            ${isSelected ? 'ring-2 ring-blue-500' : ''}
+            ${hasAttendance ? 'bg-green-100 dark:bg-green-900/20' : ''}
             hover:bg-gray-100 dark:hover:bg-gray-700
           `}
         >
@@ -1062,7 +1367,7 @@ const CalendarView: React.FC<{ attendanceMarks: {[key: string]: { time: string; 
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={goToPreviousMonth}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
         >
           <FiChevronLeft size={20} />
         </button>
@@ -1071,7 +1376,7 @@ const CalendarView: React.FC<{ attendanceMarks: {[key: string]: { time: string; 
         </h2>
         <button
           onClick={goToNextMonth}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
         >
           <FiChevronRight size={20} />
         </button>
@@ -1080,7 +1385,7 @@ const CalendarView: React.FC<{ attendanceMarks: {[key: string]: { time: string; 
       {/* Days of Week */}
       <div className="grid grid-cols-7 gap-2 mb-2">
         {daysOfWeek.map(day => (
-          <div key={day} className="text-center text-sm font-medium text-gray-600 dark:text-gray-400">
+          <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400">
             {day}
           </div>
         ))}
@@ -1093,7 +1398,7 @@ const CalendarView: React.FC<{ attendanceMarks: {[key: string]: { time: string; 
       
       {/* Selected Date Details */}
       {selectedDate && (
-        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
             {selectedDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </h3>
@@ -1101,14 +1406,14 @@ const CalendarView: React.FC<{ attendanceMarks: {[key: string]: { time: string; 
           {/* Attendance marks for selected date (read-only) */}
           {attendanceMarks[selectedDate.toISOString().split('T')[0]]?.length > 0 ? (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Asistencias Registradas</h4>
+              <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Asistencias Registradas</h4>
               {attendanceMarks[selectedDate.toISOString().split('T')[0]].map((mark, index) => (
-                <div key={index} className="flex items-center gap-3 bg-white dark:bg-gray-800 p-3 rounded-lg">
-                  <FiClock className="w-4 h-4 text-gray-500" />
+                <div key={index} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <FiClock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                   <span className="font-medium text-gray-900 dark:text-gray-100">{mark.time}</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">•</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{mark.students} estudiantes</span>
-                  <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">•</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{mark.students} estudiantes</span>
+                  <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
                     <FiCheckCircle className="w-3 h-3 mr-1" />
                     Registrado
                   </span>
@@ -1125,15 +1430,15 @@ const CalendarView: React.FC<{ attendanceMarks: {[key: string]: { time: string; 
       )}
       
       {/* Summary */}
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">Resumen del Mes</h4>
-        <p className="text-sm text-blue-700 dark:text-blue-400">
+      <div className="mt-6 p-4 bg-primary/20 rounded-lg">
+        <h4 className="font-medium text-primary mb-2">Resumen del Mes</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Total de días con asistencia: {Object.keys(attendanceMarks).length}
         </p>
-        <p className="text-sm text-blue-700 dark:text-blue-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Total de registros: {Object.values(attendanceMarks).reduce((sum, marks) => sum + marks.length, 0)}
         </p>
-        <p className="text-sm text-blue-700 dark:text-blue-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Total de estudiantes: {Object.values(attendanceMarks).reduce((sum, marks) => 
             sum + marks.reduce((s, m) => s + m.students, 0), 0
           )}

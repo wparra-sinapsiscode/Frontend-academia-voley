@@ -4,7 +4,8 @@ import { FiPlus, FiSearch, FiFilter, FiDownload, FiEye, FiEdit, FiTrash2, FiDoll
 import { useAppContext } from '../../contexts/AppContext';
 import { Link } from 'react-router-dom';
 import PaymentReceipt from '../../components/admin/PaymentReceipt';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, ComposedChart } from 'recharts';
+import { mockExpenses } from '../../data/mockData';
 
 interface Payment {
   id: string;
@@ -27,6 +28,7 @@ interface Payment {
   rejectionReason?: string;
   voucherFile?: string; // Nombre o URL del archivo de voucher adjunto
   voucherUrl?: string;
+  voucherImage?: string; // Base64 de la imagen del voucher
 }
 
 interface Expense {
@@ -40,7 +42,7 @@ interface Expense {
 }
 
 const Finances: React.FC = () => {
-  const { students, payments: contextPayments, paymentTypes, expenseCategories, updatePayment, darkMode, user } = useAppContext();
+  const { students, payments: contextPayments, paymentTypes, expenseCategories, updatePayment, addPayment, darkMode, user } = useAppContext();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'approvals'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pagado' | 'pendiente' | 'vencido'>('all');
@@ -95,35 +97,21 @@ const Finances: React.FC = () => {
       rejected: p.rejected,
       rejectionReason: p.rejectionReason,
       voucherFile: p.voucherUrl,
-      voucherUrl: p.voucherUrl
+      voucherUrl: p.voucherUrl,
+      voucherImage: p.voucherImage
     } as Payment;
   });
 
-  // Mock data for expenses
-  const [expenses, setExpenses] = useState<Expense[]>([
-    {
-      id: '1',
-      description: 'Compra de balones de voleibol',
-      amount: 1250,
-      category: 'equipamiento',
-      date: '2024-01-10',
-      receipt: 'receipt_001.pdf'
-    },
-    {
-      id: '2',
-      description: 'Salario entrenador principal',
-      amount: 3000,
-      category: 'salarios',
-      date: '2024-01-01'
-    },
-    {
-      id: '3',
-      description: 'Alquiler cancha',
-      amount: 2000,
-      category: 'alquiler',
-      date: '2024-01-01'
-    }
-  ]);
+  // Use real expenses data from mockData
+  const [expenses, setExpenses] = useState<Expense[]>(mockExpenses.map(expense => ({
+    id: expense.id,
+    description: expense.description,
+    amount: expense.amount,
+    category: expense.category,
+    categoryName: expense.categoryName,
+    date: expense.date,
+    receipt: expense.receiptNumber
+  })));
 
   // Financial calculations
   const totalIncome = payments
@@ -136,34 +124,146 @@ const Finances: React.FC = () => {
   const pendingPayments = payments
     .filter(p => p.status === 'pendiente')
     .reduce((sum, p) => sum + p.amount, 0);
+
+  // Real expenses by category from mockExpenses - Mejorado con porcentajes
+  const expensesByCategory = React.useMemo(() => {
+    const categoryTotals: { [key: string]: number } = {};
+    let totalAmount = 0;
     
+    // Agrupar gastos por categoría
+    expenses.forEach(expense => {
+      const categoryName = expense.categoryName || expense.category;
+      categoryTotals[categoryName] = (categoryTotals[categoryName] || 0) + expense.amount;
+      totalAmount += expense.amount;
+    });
+    
+    // Colores específicos para cada categoría
+    const colors: { [key: string]: string } = {
+      'Alquiler': '#FF6B6B',
+      'Servicios': '#4ECDC4',
+      'Equipamiento': '#45B7D1',
+      'Mantenimiento': '#96CEB4',
+      'Personal': '#FFEAA7',
+      'Otros': '#DDA0DD'
+    };
+    
+    // Convertir a array con porcentajes
+    const result = Object.entries(categoryTotals).map(([name, value]) => ({
+      name,
+      value,
+      percentage: totalAmount > 0 ? ((value / totalAmount) * 100).toFixed(1) : '0',
+      color: colors[name] || '#999999'
+    }));
+    
+    // Ordenar por valor descendente
+    result.sort((a, b) => b.value - a.value);
+    
+    console.log('📊 Gastos por Categoría:', result);
+    return result;
+  }, [expenses]);
+
+  // Chart data - Usando datos reales de pagos y gastos
+  const monthlyData = React.useMemo(() => {
+    const monthlyIncome: { [key: string]: number } = {};
+    const monthlyExpenses: { [key: string]: number } = {};
+    
+    // Agrupar ingresos por mes (solo pagos aprobados y completados)
+    payments.filter(p => p.status === 'pagado' && p.approved !== false && !p.rejected).forEach(payment => {
+      const date = new Date(payment.date);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyIncome[monthYear] = (monthlyIncome[monthYear] || 0) + payment.amount;
+    });
+    
+    // Agrupar gastos por mes
+    expenses.forEach(expense => {
+      const date = new Date(expense.date);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyExpenses[monthYear] = (monthlyExpenses[monthYear] || 0) + expense.amount;
+    });
+    
+    // Generar datos para los últimos 6 meses
+    const months = [];
+    const today = new Date(2025, 5, 2); // June 2, 2025
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = date.toLocaleDateString('es-PE', { month: 'short' });
+      const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      
+      const ingresos = monthlyIncome[monthYear] || 0;
+      const gastos = monthlyExpenses[monthYear] || 0;
+      
+      months.push({
+        month: capitalizedMonth,
+        monthYear,
+        ingresos: ingresos,
+        gastos: gastos,
+        utilidad: ingresos - gastos,
+        margen: ingresos > 0 ? ((ingresos - gastos) / ingresos * 100).toFixed(1) : '0'
+      });
+    }
+    
+    console.log('📊 Monthly Financial Data:', { 
+      monthlyIncome, 
+      monthlyExpenses, 
+      chartData: months,
+      totals: {
+        totalIncome: Object.values(monthlyIncome).reduce((sum, val) => sum + val, 0),
+        totalExpenses: Object.values(monthlyExpenses).reduce((sum, val) => sum + val, 0)
+      }
+    });
+    return months;
+  }, [payments, expenses]);
+
+  // CONSOLA: Mostrar datos financieros completos
+  console.log('💰 FINANZAS - RESUMEN JUNIO 2025:', {
+    fechaActual: '2025-06-02',
+    ingresos: {
+      totalIngresos: totalIncome,
+      totalPagos: payments.length,
+      pagosCompletados: payments.filter(p => p.status === 'pagado' && p.approved).length,
+      pagosPendientes: payments.filter(p => p.status === 'pendiente').length,
+      pagosVencidos: payments.filter(p => p.status === 'vencido').length,
+      desglosePorTipo: {
+        mensualidades: payments.filter(p => p.type === 'payment_monthly').reduce((sum, p) => sum + p.amount, 0),
+        matriculas: payments.filter(p => p.type === 'payment_registration').reduce((sum, p) => sum + p.amount, 0),
+        uniformes: payments.filter(p => p.type === 'payment_uniform').reduce((sum, p) => sum + p.amount, 0),
+        torneos: payments.filter(p => p.type === 'payment_tournament').reduce((sum, p) => sum + p.amount, 0)
+      }
+    },
+    gastos: {
+      totalGastos: totalExpenses,
+      cantidadGastos: expenses.length,
+      gastosPorCategoria: expensesByCategory.map(cat => ({
+        categoria: cat.name,
+        monto: cat.value,
+        porcentaje: ((cat.value / totalExpenses) * 100).toFixed(1) + '%'
+      }))
+    },
+    resumenFinanciero: {
+      ingresosMes: totalIncome,
+      gastosMes: totalExpenses,
+      utilidadNeta: netProfit,
+      margenUtilidad: totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) + '%' : '0%',
+      pagosPendientesCobrar: pendingPayments
+    },
+    estadisticasEstudiantes: {
+      totalEstudiantes: [...new Set(payments.map(p => p.studentId))].length,
+      estudiantesAlDia: payments.filter(p => p.status === 'pagado' && p.type === 'payment_monthly').length,
+      estudiantesPendientes: payments.filter(p => p.status === 'pendiente' && p.type === 'payment_monthly').length,
+      estudiantesMorosos: payments.filter(p => p.status === 'vencido' && p.type === 'payment_monthly').length
+    }
+  });
+  
+  console.log('📈 FINANZAS - GRÁFICOS:', {
+    evolucionMensual: monthlyData,
+    gastosPorCategoria: expensesByCategory
+  });
+
   // Approval related calculations
   const pendingApprovalPayments = payments.filter(p => p.pendingApproval === true && !p.rejected);
   const pendingApprovalCount = pendingApprovalPayments.length;
-  
-  // Debug logging
-  console.log('📊 Finanzas - Total pagos del contexto:', contextPayments.length);
-  console.log('📊 Finanzas - Pagos convertidos:', payments.length);
-  console.log('📊 Finanzas - Pagos pendientes de aprobación:', pendingApprovalPayments);
-  console.log('📊 Finanzas - Cantidad pendientes:', pendingApprovalCount);
-
-  // Chart data
-  const monthlyData = [
-    { month: 'Ene', ingresos: 11250, gastos: 8000 },
-    { month: 'Feb', ingresos: 10500, gastos: 8750 },
-    { month: 'Mar', ingresos: 12000, gastos: 7750 },
-    { month: 'Abr', ingresos: 12750, gastos: 8500 },
-    { month: 'May', ingresos: 12250, gastos: 9000 },
-    { month: 'Jun', ingresos: 13250, gastos: 8250 }
-  ];
-
-  const expensesByCategory = [
-    { name: 'Salarios', value: 3000, color: '#FF6B6B' },
-    { name: 'Alquiler', value: 2000, color: '#4ECDC4' },
-    { name: 'Equipamiento', value: 1250, color: '#45B7D1' },
-    { name: 'Servicios', value: 750, color: '#96CEB4' },
-    { name: 'Marketing', value: 500, color: '#FFEAA7' }
-  ];
 
   // Helper function to check date range
   const isInDateRange = (paymentDate: string | undefined, range: string) => {
@@ -171,7 +271,6 @@ const Finances: React.FC = () => {
     
     const date = new Date(paymentDate);
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
     switch (range) {
       case 'today':
@@ -212,15 +311,24 @@ const Finances: React.FC = () => {
 
   const handlePaymentSubmit = (paymentData: Partial<Payment>) => {
     if (editingPayment) {
-      setPayments(payments.map(p => 
-        p.id === editingPayment.id ? { ...p, ...paymentData } : p
-      ));
+      // Actualizar pago existente
+      const updatedPayment = { ...editingPayment, ...paymentData };
+      updatePayment(editingPayment.id, updatedPayment);
     } else {
-      const newPayment: Payment = {
-        id: Date.now().toString(),
-        ...paymentData as Payment
+      // Crear nuevo pago
+      const newPaymentData = {
+        studentId: paymentData.studentId!,
+        amount: paymentData.amount!,
+        dueDate: new Date(paymentData.dueDate!),
+        paidDate: paymentData.date ? new Date(paymentData.date) : undefined,
+        status: paymentData.status as 'pending' | 'paid' | 'overdue',
+        method: paymentData.method as 'cash' | 'card' | 'transfer',
+        description: paymentData.description,
+        period: paymentData.type,
+        approved: paymentData.status === 'pagado',
+        pendingApproval: false
       };
-      setPayments([...payments, newPayment]);
+      addPayment(newPaymentData);
     }
     setShowPaymentModal(false);
     setEditingPayment(null);
@@ -588,26 +696,101 @@ const Finances: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700"
             >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Ingresos vs Gastos Mensuales</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Ingresos vs Gastos Mensuales</h3>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-green-500 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Ingresos</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-red-500 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Gastos</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Utilidad</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Resumen del mes actual */}
+              <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+                <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Ingresos Jun</p>
+                  <p className="text-sm font-semibold text-green-600 dark:text-green-400">
+                    {formatCurrency(monthlyData[5]?.ingresos || 0)}
+                  </p>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Gastos Jun</p>
+                  <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+                    {formatCurrency(monthlyData[5]?.gastos || 0)}
+                  </p>
+                </div>
+                <div className={`${monthlyData[5]?.utilidad >= 0 ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-orange-50 dark:bg-orange-900/20'} p-2 rounded`}>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Utilidad Jun</p>
+                  <p className={`text-sm font-semibold ${monthlyData[5]?.utilidad >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                    {formatCurrency(monthlyData[5]?.utilidad || 0)}
+                  </p>
+                </div>
+              </div>
+              
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData}>
+                <ComposedChart data={monthlyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                  <XAxis dataKey="month" stroke={darkMode ? '#9CA3AF' : '#6B7280'} />
-                  <YAxis tickFormatter={(value) => `S/ ${value.toLocaleString()}`} stroke={darkMode ? '#9CA3AF' : '#6B7280'} />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis 
+                    tickFormatter={(value) => `S/ ${(value / 1000).toFixed(0)}k`} 
+                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
+                    style={{ fontSize: '12px' }}
+                  />
                   <Tooltip 
-                    formatter={(value) => formatCurrency(value as number)}
+                    formatter={(value: number, name: string) => [
+                      formatCurrency(value),
+                      name.charAt(0).toUpperCase() + name.slice(1)
+                    ]}
                     contentStyle={{
                       backgroundColor: darkMode ? '#1F2937' : '#FFFFFF',
                       border: `1px solid ${darkMode ? '#374151' : '#E5E7EB'}`,
-                      borderRadius: '0.375rem'
+                      borderRadius: '0.375rem',
+                      fontSize: '12px'
                     }}
-                    labelStyle={{ color: darkMode ? '#E5E7EB' : '#111827' }}
+                    labelStyle={{ color: darkMode ? '#E5E7EB' : '#111827', fontWeight: 'bold' }}
                     itemStyle={{ color: darkMode ? '#E5E7EB' : '#111827' }}
                   />
-                  <Legend wrapperStyle={{ color: darkMode ? '#E5E7EB' : '#111827' }} />
-                  <Bar dataKey="ingresos" fill="#10B981" name="Ingresos" />
-                  <Bar dataKey="gastos" fill="#EF4444" name="Gastos" />
-                </BarChart>
+                  <Legend 
+                    wrapperStyle={{ color: darkMode ? '#E5E7EB' : '#111827', fontSize: '12px' }}
+                    iconType="rect"
+                  />
+                  <Bar 
+                    dataKey="ingresos" 
+                    fill="#10B981" 
+                    name="Ingresos" 
+                    radius={[4, 4, 0, 0]}
+                    animationDuration={1000}
+                  />
+                  <Bar 
+                    dataKey="gastos" 
+                    fill="#EF4444" 
+                    name="Gastos" 
+                    radius={[4, 4, 0, 0]}
+                    animationDuration={1200}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="utilidad" 
+                    stroke="#3B82F6" 
+                    strokeWidth={2}
+                    dot={{ fill: '#3B82F6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="Utilidad"
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </motion.div>
 
@@ -617,34 +800,60 @@ const Finances: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700"
             >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Gastos por Categoría</h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Gastos por Categoría</h3>
+              </div>
+              <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
                     data={expensesByCategory}
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    innerRadius={50}
+                    outerRadius={90}
+                    paddingAngle={2}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelStyle={{ fill: darkMode ? '#E5E7EB' : '#111827' }}
+                    animationBegin={0}
+                    animationDuration={800}
+                    label={({ name, percentage }) => `${name} ${percentage}%`}
+                    labelLine={false}
                   >
                     {expensesByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color}
+                        style={{ filter: 'brightness(1.05)' }}
+                      />
                     ))}
                   </Pie>
                   <Tooltip 
-                    formatter={(value) => formatCurrency(value as number)}
+                    formatter={(value: number) => formatCurrency(value)}
                     contentStyle={{
                       backgroundColor: darkMode ? '#1F2937' : '#FFFFFF',
                       border: `1px solid ${darkMode ? '#374151' : '#E5E7EB'}`,
-                      borderRadius: '0.375rem'
+                      borderRadius: '0.375rem',
+                      fontSize: '12px'
                     }}
-                    labelStyle={{ color: darkMode ? '#E5E7EB' : '#111827' }}
+                    labelStyle={{ color: darkMode ? '#E5E7EB' : '#111827', fontWeight: 'bold' }}
                     itemStyle={{ color: darkMode ? '#E5E7EB' : '#111827' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              
+              {/* Leyenda completa */}
+              <div className="grid grid-cols-2 gap-2 mt-4 text-xs">
+                {expensesByCategory.map((category) => (
+                  <div key={category.name} className="flex items-center gap-1">
+                    <div 
+                      className="w-3 h-3 rounded" 
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <span className="text-gray-600 dark:text-gray-400 truncate">
+                      {category.name} ({category.percentage}%)
+                    </span>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           </div>
         </div>
@@ -824,10 +1033,11 @@ const Finances: React.FC = () => {
                         <div className="text-gray-500 dark:text-gray-400">Vence: {payment.dueDate}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {payment.voucherFile ? (
+                        {(payment.voucherImage || payment.voucherFile) ? (
                           <button
                             onClick={() => {
-                              setSelectedVoucher(payment.voucherFile!);
+                              const imageUrl = payment.voucherImage || payment.voucherFile;
+                              setSelectedVoucher(imageUrl!);
                               setShowVoucherModal(true);
                             }}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/40"
@@ -986,22 +1196,49 @@ const Finances: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           <span className="capitalize">{payment.method}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {payment.voucherFile ? (
+                        
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(payment.voucherImage || payment.voucherUrl) ? (
                             <button
                               onClick={() => {
-                                setSelectedVoucher(payment.voucherFile!);
+                                const imageUrl = payment.voucherImage || payment.voucherUrl;
+                                setSelectedVoucher(imageUrl);
                                 setShowVoucherModal(true);
                               }}
-                              className="inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/40"
+                              className="relative group"
                             >
-                              <FiEye className="w-3 h-3" />
-                              Ver comprobante
+                              <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-blue-500 transition-colors">
+                                {payment.voucherImage ? (
+                                  <img 
+                                    src={payment.voucherImage} 
+                                    alt="Voucher"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = 'https://via.placeholder.com/64x64?text=Error';
+                                    }}
+                                  />
+                                ) : payment.voucherUrl?.startsWith('http') ? (
+                                  <img 
+                                    src={payment.voucherUrl} 
+                                    alt="Voucher"
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    <FiImage className="w-6 h-6 text-gray-400" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
+                                  <FiEye className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                              </div>
                             </button>
                           ) : (
-                            <span className="text-gray-500 dark:text-gray-400">No adjuntado</span>
+                            <span className="text-sm text-gray-400 dark:text-gray-500">Sin voucher</span>
                           )}
                         </td>
+                  
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex space-x-3">
                             <button
@@ -1166,7 +1403,7 @@ const Finances: React.FC = () => {
 
       {/* Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50" style={{position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh'}}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1331,7 +1568,6 @@ const Finances: React.FC = () => {
             setSelectedPayment(null);
           }}
           onSend={(email) => {
-            console.log(`Enviando comprobante a ${email}`);
             // Aquí iría la lógica para enviar el comprobante por correo (en una app real)
           }}
         />
@@ -1452,7 +1688,7 @@ const Finances: React.FC = () => {
 
       {/* Rejection Modal */}
       {showRejectModal && (
-        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style={{position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh'}}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1494,46 +1730,23 @@ const Finances: React.FC = () => {
 
       {/* Voucher Modal */}
       {showVoucherModal && selectedVoucher && (
-        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style={{position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh'}}>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-4xl max-h-[90vh] overflow-auto relative"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Comprobante de Pago</h3>
-              <button
-                onClick={() => {
-                  setShowVoucherModal(false);
-                  setSelectedVoucher(null);
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="flex justify-center">
-              <img
-                src={selectedVoucher}
-                alt="Comprobante de pago"
-                className="max-w-full max-h-[70vh] object-contain border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'https://via.placeholder.com/400x300?text=Imagen+no+disponible';
-                }}
-              />
-            </div>
-            <div className="mt-4 flex justify-center">
-              <button
-                onClick={() => window.open(selectedVoucher, '_blank')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              >
-                <FiEye size={16} />
-                Ver en tamaño completo
-              </button>
-            </div>
-          </motion.div>
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" 
+          onClick={() => {
+            setShowVoucherModal(false);
+            setSelectedVoucher(null);
+          }}
+        >
+          <img
+            src={selectedVoucher}
+            alt="Comprobante de pago"
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = 'https://via.placeholder.com/400x300?text=Imagen+no+disponible';
+            }}
+          />
         </div>
       )}
     </div>

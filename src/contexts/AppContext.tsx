@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
 import { 
   mockUsers, 
   mockStudents, 
   mockCoaches, 
   mockCategories, 
   mockSchedules, 
-  mockPayments, 
+  mockPayments,
+  mockExpenses, 
   mockTournaments, 
   mockAnnouncements, 
   mockTrainingPlans,
@@ -22,12 +23,15 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'coach' | 'parent';
+  role: 'admin' | 'coach' | 'parent' | 'student';
   avatar?: string;
+  profileImage?: string;
   phone?: string;
-  createdAt: Date;
+  createdAt?: Date;
   lastLogin?: Date;
   studentId?: string;
+  password?: string;
+  active?: boolean;
 }
 
 interface Category {
@@ -35,10 +39,11 @@ interface Category {
   name: string;
   description: string;
   ageRange: { min: number; max: number };
-  maxStudents: number;
-  currentStudents: number;
-  price: number;
-  schedule: string[];
+  maxStudents?: number;
+  currentStudents?: number;
+  price?: number;
+  monthlyFee?: number;
+  schedule: string | string[];
   coachId?: string;
 }
 
@@ -108,12 +113,17 @@ interface Payment {
   id: string;
   studentId: string;
   amount: number;
-  dueDate: Date;
+  dueDate?: Date;
   paidDate?: Date;
-  status: 'pending' | 'paid' | 'overdue';
+  status: 'pending' | 'paid' | 'overdue' | 'completed';
   method?: 'cash' | 'card' | 'transfer';
-  description: string;
-  period: string;
+  description?: string;
+  period?: string;
+  concept?: string;
+  date?: Date;
+  receiptNumber?: string;
+  receiptUrl?: string;
+  notes?: string;
   approved?: boolean;
   approvedBy?: string;
   approvedDate?: Date;
@@ -138,15 +148,15 @@ interface TournamentResult {
 interface Tournament {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   date: Date;
   location: string;
   categories: string[];
-  maxParticipants: number;
-  currentParticipants: number;
+  maxParticipants?: number;
+  currentParticipants?: number;
   registrationDeadline: Date;
-  entryFee: number;
-  prizes: string[];
+  entryFee?: number;
+  prizes?: string[];
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   results?: TournamentResult[];
 }
@@ -158,8 +168,9 @@ interface Announcement {
   author: string;
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';
-  targetAudience: 'all' | 'students' | 'parents' | 'coaches';
+  targetAudience: ('all' | 'students' | 'parents' | 'coaches')[];
   pinned: boolean;
+  expiryDate?: Date;
 }
 
 interface Exercise {
@@ -260,17 +271,21 @@ interface Evaluation {
     attitude: number;
   };
   notes: string;
-  overallScore: number;
+  overallScore?: number;
+  overall?: number;
+  goals?: string[];
 }
 
 interface StudentLogEntry {
   id: string;
   studentId: string;
-  coachId: string;
+  coachId?: string;
   date: Date;
-  parameter: string;
-  value: number;
+  parameter?: string;
+  value?: number;
   description?: string;
+  type?: 'achievement' | 'progress' | 'note';
+  performedBy?: string;
 }
 
 interface ChallengeParameter {
@@ -279,8 +294,14 @@ interface ChallengeParameter {
   description: string;
   category: 'technical' | 'physical' | 'mental' | 'tactical';
   unit: string;
-  valueType: 'number' | 'percentage';
-  active: boolean;
+  valueType?: 'number' | 'percentage';
+  active?: boolean;
+  targetValue?: number;
+  difficultyLevels?: {
+    beginner: number;
+    intermediate: number;
+    advanced: number;
+  };
 }
 
 interface PaymentType {
@@ -318,6 +339,15 @@ interface Notification {
   priority: 'low' | 'medium' | 'high';
 }
 
+interface CoachSpecialization {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  active: boolean;
+}
+
 interface AppContextType {
   user: User | null;
   users: User[];
@@ -338,6 +368,7 @@ interface AppContextType {
   expenseCategories: ExpenseCategory[];
   evaluationFields: EvaluationField[];
   notifications: Notification[];
+  coachSpecializations: CoachSpecialization[];
   darkMode: boolean;
   toggleDarkMode: () => void;
   login: (email: string, password: string) => Promise<boolean>;
@@ -348,7 +379,11 @@ interface AppContextType {
   addPayment: (payment: Omit<Payment, 'id'>) => void;
   updatePayment: (id: string, payment: Partial<Payment>) => void;
   addAnnouncement: (announcement: Omit<Announcement, 'id'>) => void;
+  updateAnnouncement: (id: string, announcement: Partial<Announcement>) => void;
+  deleteAnnouncement: (id: string) => void;
   addTournament: (tournament: Omit<Tournament, 'id'>) => void;
+  updateTournament: (id: string, tournament: Partial<Tournament>) => void;
+  deleteTournament: (id: string) => void;
   markAttendance: (attendance: Omit<Attendance, 'id'>) => void;
   addEvaluation: (evaluation: Omit<Evaluation, 'id'>) => void;
   addClassPlan: (classPlan: Omit<ClassPlan, 'id'>) => void;
@@ -374,6 +409,14 @@ interface AppContextType {
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
   deleteNotification: (id: string) => void;
+  addCoach: (coach: Omit<Coach, 'id'>) => void;
+  updateCoach: (id: string, coach: Partial<Coach>) => void;
+  deleteCoach: (id: string) => void;
+  addUser: (user: Omit<User, 'id'>) => void;
+  addCoachSpecialization: (specialization: Omit<CoachSpecialization, 'id'>) => void;
+  updateCoachSpecialization: (id: string, specialization: Partial<CoachSpecialization>) => void;
+  deleteCoachSpecialization: (id: string) => void;
+  dispatch?: React.Dispatch<AppAction>;
 }
 
 interface AppState {
@@ -396,6 +439,7 @@ interface AppState {
   expenseCategories: ExpenseCategory[];
   evaluationFields: EvaluationField[];
   notifications: Notification[];
+  coachSpecializations: CoachSpecialization[];
   loading: boolean;
   darkMode: boolean;
 }
@@ -412,6 +456,8 @@ type AppAction =
   | { type: 'UPDATE_ANNOUNCEMENT'; payload: { id: string; announcement: Partial<Announcement> } }
   | { type: 'DELETE_ANNOUNCEMENT'; payload: string }
   | { type: 'ADD_TOURNAMENT'; payload: Tournament }
+  | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; tournament: Partial<Tournament> } }
+  | { type: 'DELETE_TOURNAMENT'; payload: string }
   | { type: 'MARK_ATTENDANCE'; payload: Attendance }
   | { type: 'ADD_EVALUATION'; payload: Evaluation }
   | { type: 'ADD_CLASS_PLAN'; payload: ClassPlan }
@@ -441,6 +487,10 @@ type AppAction =
   | { type: 'UPDATE_COACH'; payload: { id: string; coach: Partial<Coach> } }
   | { type: 'DELETE_COACH'; payload: string }
   | { type: 'ADD_USER'; payload: User }
+  | { type: 'UPDATE_USER'; payload: { id: string; user: Partial<User> } }
+  | { type: 'ADD_COACH_SPECIALIZATION'; payload: CoachSpecialization }
+  | { type: 'UPDATE_COACH_SPECIALIZATION'; payload: { id: string; specialization: Partial<CoachSpecialization> } }
+  | { type: 'DELETE_COACH_SPECIALIZATION'; payload: string }
   | { type: 'TOGGLE_DARK_MODE' }
   | { type: 'INITIALIZE_DATA'; payload: Partial<AppState> };
 
@@ -463,6 +513,56 @@ const initialState: AppState = {
   paymentTypes: [],
   expenseCategories: [],
   notifications: [],
+  coachSpecializations: [
+    {
+      id: 'spec_1',
+      name: 'Técnica',
+      description: 'Desarrollo de habilidades técnicas fundamentales del voleibol',
+      icon: 'FiTarget',
+      color: 'blue',
+      active: true
+    },
+    {
+      id: 'spec_2',
+      name: 'Preparación Física',
+      description: 'Acondicionamiento físico y desarrollo de capacidades atléticas',
+      icon: 'FiActivity',
+      color: 'green',
+      active: true
+    },
+    {
+      id: 'spec_3',
+      name: 'Táctica',
+      description: 'Estrategias de juego y sistemas tácticos',
+      icon: 'FiZap',
+      color: 'purple',
+      active: true
+    },
+    {
+      id: 'spec_4',
+      name: 'Psicología Deportiva',
+      description: 'Desarrollo mental y manejo de emociones en el deporte',
+      icon: 'FiTrendingUp',
+      color: 'pink',
+      active: true
+    },
+    {
+      id: 'spec_5',
+      name: 'Nutrición',
+      description: 'Asesoramiento nutricional para deportistas',
+      icon: 'FiBook',
+      color: 'orange',
+      active: true
+    },
+    {
+      id: 'spec_6',
+      name: 'Análisis de Video',
+      description: 'Análisis técnico-táctico mediante grabaciones',
+      icon: 'FiAward',
+      color: 'red',
+      active: true
+    }
+  ],
   evaluationFields: [
     // Campos técnicos predeterminados
     { id: 'serve', name: 'Saque', category: 'technical', description: 'Habilidad para realizar saques efectivos', active: true },
@@ -549,6 +649,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         tournaments: [...state.tournaments, action.payload]
+      };
+    case 'UPDATE_TOURNAMENT':
+      return {
+        ...state,
+        tournaments: state.tournaments.map(tournament =>
+          tournament.id === action.payload.id
+            ? { ...tournament, ...action.payload.tournament }
+            : tournament
+        )
+      };
+    case 'DELETE_TOURNAMENT':
+      return {
+        ...state,
+        tournaments: state.tournaments.filter(tournament => tournament.id !== action.payload)
       };
     case 'MARK_ATTENDANCE':
       return {
@@ -734,6 +848,42 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         users: [...state.users, action.payload]
       };
+    case 'UPDATE_USER':
+      const updatedUsers = state.users.map(user =>
+        user.id === action.payload.id
+          ? { ...user, ...action.payload.user }
+          : user
+      );
+      
+      // If updating the current user, update it as well
+      const updatedCurrentUser = state.user && state.user.id === action.payload.id
+        ? { ...state.user, ...action.payload.user }
+        : state.user;
+      
+      return {
+        ...state,
+        users: updatedUsers,
+        user: updatedCurrentUser
+      };
+    case 'ADD_COACH_SPECIALIZATION':
+      return {
+        ...state,
+        coachSpecializations: [...state.coachSpecializations, action.payload]
+      };
+    case 'UPDATE_COACH_SPECIALIZATION':
+      return {
+        ...state,
+        coachSpecializations: state.coachSpecializations.map(spec =>
+          spec.id === action.payload.id
+            ? { ...spec, ...action.payload.specialization }
+            : spec
+        )
+      };
+    case 'DELETE_COACH_SPECIALIZATION':
+      return {
+        ...state,
+        coachSpecializations: state.coachSpecializations.filter(spec => spec.id !== action.payload)
+      };
     case 'TOGGLE_DARK_MODE':
       const newDarkMode = !state.darkMode;
       if (typeof window !== 'undefined') {
@@ -763,24 +913,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Initialize data from localStorage or use mock data
   useEffect(() => {
-    console.log('🚀 AppContext - Inicializando datos...');
-    console.log('🚀 AppContext - mockPayments disponibles:', mockPayments.length);
-    console.log('🚀 AppContext - Primeros 3 mockPayments:', mockPayments.slice(0, 3));
-    console.log('🚀 AppContext - mockClassPlans disponibles:', mockClassPlans.length);
-    console.log('🚀 AppContext - Primeros mockClassPlans:', mockClassPlans);
     
     // TEMPORAL: Descomentar la siguiente línea para limpiar localStorage y forzar carga de mockData
     // localStorage.removeItem('volleyAcademyData');
     
     const savedData = localStorage.getItem('volleyAcademyData');
-    console.log('🚀 AppContext - Datos guardados en localStorage:', !!savedData);
     if (savedData) {
-      console.log('🚀 AppContext - Tamaño de datos en localStorage:', savedData.length);
       try {
         const parsedData = JSON.parse(savedData);
-        console.log('🚀 AppContext - Pagos en localStorage:', parsedData.payments?.length || 0);
       } catch (e) {
-        console.log('🚀 AppContext - Error parseando localStorage para debug');
       }
     }
     
@@ -800,10 +941,25 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               earnedDate: new Date(ach.earnedDate)
             })) || []
           })) || [],
-          coaches: parsedData.coaches?.map((coach: any) => ({
-            ...coach,
-            hireDate: new Date(coach.hireDate)
-          })) || [],
+          coaches: (() => {
+            // Merge mockCoaches with saved coaches to ensure all coaches are loaded
+            const savedCoaches = parsedData.coaches?.map((coach: any) => ({
+              ...coach,
+              hireDate: new Date(coach.hireDate)
+            })) || [];
+            
+            // Get existing coach IDs to avoid duplicates
+            const existingIds = new Set(savedCoaches.map((c: any) => c.id));
+            
+            // Add mockCoaches that don't exist in saved data
+            const missingMockCoaches = mockCoaches.filter(mockCoach => !existingIds.has(mockCoach.id));
+            
+            // Merge both arrays
+            const allCoaches = [...savedCoaches, ...missingMockCoaches];
+            
+            
+            return allCoaches;
+          })(),
           payments: (() => {
             // Merge mockPayments with saved payments to ensure mockData is loaded
             const savedPayments = parsedData.payments?.map((payment: any) => ({
@@ -823,11 +979,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             // Merge both arrays
             const allPayments = [...savedPayments, ...missingMockPayments];
             
-            console.log('🚀 AppContext - Pagos guardados:', savedPayments.length);
-            console.log('🚀 AppContext - MockPayments faltantes:', missingMockPayments.length);
-            console.log('🚀 AppContext - Total pagos después del merge:', allPayments.length);
-            console.log('🚀 AppContext - Pagos con pendingApproval=true:', allPayments.filter(p => p.pendingApproval === true).length);
-            console.log('🚀 AppContext - IDs de pagos pendientes:', allPayments.filter(p => p.pendingApproval === true).map(p => p.id));
             
             return allPayments;
           })(),
@@ -862,8 +1013,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             const existingIds = new Set(savedClassPlans.map((cp: any) => cp.id));
             const uniqueMockPlans = processedMockClassPlans.filter(cp => !existingIds.has(cp.id));
             
-            console.log('🚀 AppContext - ClassPlans guardados:', savedClassPlans.length);
-            console.log('🚀 AppContext - MockClassPlans únicos:', uniqueMockPlans.length);
             
             // Retornar mockClassPlans primero, luego las guardadas
             return [...uniqueMockPlans, ...savedClassPlans];
@@ -889,7 +1038,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             date: new Date(log.date)
           })) || []
         };
-        console.log('🚀 AppContext - Total pagos después del merge:', processedData.payments?.length || 0);
         console.log('🚀 AppContext - Primeros 3 pagos después del merge:', processedData.payments?.slice(0, 3) || []);
         console.log('🚀 AppContext - Total classPlans después del procesamiento:', processedData.classPlans?.length || 0);
         console.log('🚀 AppContext - ClassPlans procesados:', processedData.classPlans);
@@ -907,11 +1055,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             id: mockStudent.id,
             name: user?.name || 'Unknown Student',
             age: new Date().getFullYear() - new Date(mockStudent.dateOfBirth).getFullYear(),
-            category: category || mockCategories[0], // Fallback to first category if not found
+            category: category ? {
+              ...category,
+              price: (category as any).price || (category as any).monthlyFee || 0,
+              maxStudents: (category as any).maxStudents || 20,
+              currentStudents: (category as any).currentStudents || 0,
+              schedule: Array.isArray(category.schedule) ? category.schedule : [category.schedule]
+            } : {
+              ...mockCategories[0],
+              price: (mockCategories[0] as any).price || (mockCategories[0] as any).monthlyFee || 0,
+              maxStudents: (mockCategories[0] as any).maxStudents || 20,
+              currentStudents: (mockCategories[0] as any).currentStudents || 0,
+              schedule: Array.isArray(mockCategories[0].schedule) ? mockCategories[0].schedule : [mockCategories[0].schedule]
+            },
             categoryId: mockStudent.categoryId,
             parentId: mockStudent.parentId,
             parentName: parent?.name || 'Unknown Parent',
-            parentPhone: parent?.phone || '',
+            parentPhone: (parent as any)?.phone || '',
             parentEmail: parent?.email || '',
             emergencyContact: 'Contacto de emergencia',
             emergencyPhone: '999-999-999',
@@ -919,15 +1079,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             address: 'Dirección no especificada',
             birthDate: mockStudent.dateOfBirth,
             enrollmentDate: mockStudent.enrollmentDate,
-            avatar: user?.profileImage,
-            coachId: category?.coachId,
+            avatar: (user as any)?.profileImage || (user as any)?.avatar,
+            coachId: (category as any)?.coachId,
             achievements: [],
             stats: {
-              attendanceRate: 85,
-              skillLevel: 3,
-              improvement: 15,
-              totalSessions: 24,
-              averagePerformance: 4.2
+              attendanceRate: 0, // Se calculará basado en asistencias reales
+              skillLevel: 0, // Se actualizará por evaluaciones del coach
+              improvement: 0, // Se calculará basado en progreso real
+              totalSessions: 0, // Se contará de asistencias marcadas por coach
+              averagePerformance: 0 // Se calculará de evaluaciones reales
             },
             paymentStatus: 'paid' as const
           };
@@ -937,19 +1097,45 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           type: 'INITIALIZE_DATA',
           payload: {
             user: null,
-            users: mockUsers,
+            users: mockUsers.map(u => ({ ...u, createdAt: (u as any).createdAt || new Date() })),
             students: transformedStudents,
             coaches: mockCoaches,
-            categories: mockCategories,
+            categories: mockCategories.map(cat => ({
+              ...cat,
+              price: (cat as any).price || (cat as any).monthlyFee || 0,
+              maxStudents: (cat as any).maxStudents || 20,
+              currentStudents: (cat as any).currentStudents || 0,
+              schedule: Array.isArray(cat.schedule) ? cat.schedule : [cat.schedule]
+            })),
             schedules: mockSchedules,
-            payments: mockPayments,
-            tournaments: mockTournaments,
+            payments: mockPayments.map(payment => ({
+              ...payment,
+              description: (payment as any).description || (payment as any).concept || '',
+              period: (payment as any).period || 'monthly',
+              dueDate: (payment as any).dueDate || (payment as any).date || new Date(),
+              status: payment.status === 'completed' ? 'paid' as const : payment.status
+            } as Payment)),
+            tournaments: mockTournaments.map(tournament => ({
+              ...tournament,
+              description: (tournament as any).description || '',
+              maxParticipants: (tournament as any).maxParticipants || 100,
+              currentParticipants: (tournament as any).currentParticipants || 0,
+              entryFee: (tournament as any).entryFee || 0,
+              prizes: (tournament as any).prizes || []
+            })),
             announcements: mockAnnouncements,
             trainingPlans: mockTrainingPlans,
             classPlans: mockClassPlans,
             attendances: mockAttendances,
-            evaluations: mockEvaluations,
-            challengeParameters: mockChallengeParameters,
+            evaluations: mockEvaluations.map(ev => ({
+              ...ev,
+              overallScore: (ev as any).overallScore || (ev as any).overall || 0
+            })),
+            challengeParameters: mockChallengeParameters.map(param => ({
+              ...param,
+              valueType: (param as any).valueType || 'number',
+              active: (param as any).active !== undefined ? (param as any).active : true
+            })),
             notifications: [],
             paymentTypes: [
               { id: 'type_mensualidad', name: 'Mensualidad', description: 'Pago mensual regular', active: true },
@@ -966,8 +1152,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               { id: 'cat_otros', name: 'Otros', description: 'Gastos varios', active: true }
             ],
             evaluationFields: initialState.evaluationFields,
-            studentLogs: mockStudentLogs,
-            challengeParameters: mockChallengeParameters
+            studentLogs: mockStudentLogs
           }
         });
       }
@@ -986,11 +1171,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           id: mockStudent.id,
           name: user?.name || 'Unknown Student',
           age: new Date().getFullYear() - new Date(mockStudent.dateOfBirth).getFullYear(),
-          category: category || mockCategories[0], // Fallback to first category if not found
+          category: category ? {
+            ...category,
+            price: (category as any).price || (category as any).monthlyFee || 0,
+            maxStudents: (category as any).maxStudents || 20,
+            currentStudents: (category as any).currentStudents || 0,
+            schedule: Array.isArray(category.schedule) ? category.schedule : [category.schedule]
+          } : {
+            ...mockCategories[0],
+            price: (mockCategories[0] as any).price || (mockCategories[0] as any).monthlyFee || 0,
+            maxStudents: (mockCategories[0] as any).maxStudents || 20,
+            currentStudents: (mockCategories[0] as any).currentStudents || 0,
+            schedule: Array.isArray(mockCategories[0].schedule) ? mockCategories[0].schedule : [mockCategories[0].schedule]
+          },
           categoryId: mockStudent.categoryId,
           parentId: mockStudent.parentId,
           parentName: parent?.name || 'Unknown Parent',
-          parentPhone: parent?.phone || '',
+          parentPhone: (parent as any)?.phone || '',
           parentEmail: parent?.email || '',
           emergencyContact: 'Contacto de emergencia',
           emergencyPhone: '999-999-999',
@@ -998,8 +1195,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           address: 'Dirección no especificada',
           birthDate: mockStudent.dateOfBirth,
           enrollmentDate: mockStudent.enrollmentDate,
-          avatar: user?.profileImage,
-          coachId: category?.coachId,
+          avatar: (user as any)?.profileImage || (user as any)?.avatar,
+          coachId: (category as any)?.coachId,
           achievements: [],
           stats: {
             attendanceRate: 85,
@@ -1016,19 +1213,45 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         type: 'INITIALIZE_DATA',
         payload: {
           user: null,
-          users: mockUsers,
+          users: mockUsers.map(u => ({ ...u, createdAt: (u as any).createdAt || new Date() })),
           students: transformedStudents,
           coaches: mockCoaches,
-          categories: mockCategories,
+          categories: mockCategories.map(cat => ({
+            ...cat,
+            price: (cat as any).price || (cat as any).monthlyFee || 0,
+            maxStudents: (cat as any).maxStudents || 20,
+            currentStudents: (cat as any).currentStudents || 0,
+            schedule: Array.isArray(cat.schedule) ? cat.schedule : [cat.schedule]
+          })),
           schedules: mockSchedules,
-          payments: mockPayments,
-          tournaments: mockTournaments,
+          payments: mockPayments.map(payment => ({
+            ...payment,
+            description: (payment as any).description || (payment as any).concept || '',
+            period: (payment as any).period || 'monthly',
+            dueDate: (payment as any).dueDate || (payment as any).date || new Date(),
+            status: payment.status === 'completed' ? 'paid' as const : payment.status
+          } as Payment)),
+          tournaments: mockTournaments.map(tournament => ({
+            ...tournament,
+            description: (tournament as any).description || '',
+            maxParticipants: (tournament as any).maxParticipants || 100,
+            currentParticipants: (tournament as any).currentParticipants || 0,
+            entryFee: (tournament as any).entryFee || 0,
+            prizes: (tournament as any).prizes || []
+          })),
           announcements: mockAnnouncements,
           trainingPlans: mockTrainingPlans,
           classPlans: mockClassPlans,
           attendances: mockAttendances,
-          evaluations: mockEvaluations,
-          challengeParameters: mockChallengeParameters,
+          evaluations: mockEvaluations.map(ev => ({
+            ...ev,
+            overallScore: (ev as any).overallScore || (ev as any).overall || 0
+          })),
+          challengeParameters: mockChallengeParameters.map(param => ({
+            ...param,
+            valueType: (param as any).valueType || 'number',
+            active: (param as any).active !== undefined ? (param as any).active : true
+          })),
           evaluationFields: initialState.evaluationFields,
           studentLogs: mockStudentLogs,
           notifications: [],
@@ -1083,15 +1306,28 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Check credentials
+    // Check credentials against all users (including newly created ones)
+    // First check the current state users
+    const allUsers = state.users;
+    const user = allUsers.find(u => u.email === email && u.password === password && u.active);
+    
+    if (user) {
+      const updatedUser = { ...user, lastLogin: new Date(), createdAt: (user as any).createdAt || new Date() };
+      dispatch({ type: 'SET_USER', payload: updatedUser });
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return true;
+    }
+    
+    // Fallback: Check default credentials (for backward compatibility)
     const isValidCredentials = Object.values(defaultCredentials).some(
       cred => cred.email === email && cred.password === password
     );
     
     if (isValidCredentials) {
-      const user = mockUsers.find(u => u.email === email);
-      if (user) {
-        const updatedUser = { ...user, lastLogin: new Date() };
+      const mockUser = mockUsers.find(u => u.email === email);
+      if (mockUser) {
+        const updatedUser = { ...mockUser, lastLogin: new Date(), createdAt: (mockUser as any).createdAt || new Date() };
         dispatch({ type: 'SET_USER', payload: updatedUser });
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -1255,6 +1491,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       id: `tournament_${Date.now()}`
     };
     dispatch({ type: 'ADD_TOURNAMENT', payload: newTournament });
+  };
+
+  const updateTournament = (id: string, tournament: Partial<Tournament>) => {
+    dispatch({ type: 'UPDATE_TOURNAMENT', payload: { id, tournament } });
+  };
+
+  const deleteTournament = (id: string) => {
+    dispatch({ type: 'DELETE_TOURNAMENT', payload: id });
   };
 
   const markAttendance = (attendanceData: Omit<Attendance, 'id'>) => {
@@ -1584,6 +1828,22 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     dispatch({ type: 'ADD_USER', payload: newUser });
   };
 
+  const addCoachSpecialization = (specializationData: Omit<CoachSpecialization, 'id'>) => {
+    const newSpecialization: CoachSpecialization = {
+      ...specializationData,
+      id: `spec_${Date.now()}`
+    };
+    dispatch({ type: 'ADD_COACH_SPECIALIZATION', payload: newSpecialization });
+  };
+
+  const updateCoachSpecialization = (id: string, specialization: Partial<CoachSpecialization>) => {
+    dispatch({ type: 'UPDATE_COACH_SPECIALIZATION', payload: { id, specialization } });
+  };
+
+  const deleteCoachSpecialization = (id: string) => {
+    dispatch({ type: 'DELETE_COACH_SPECIALIZATION', payload: id });
+  };
+
   // Check for saved user session on mount
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
@@ -1624,6 +1884,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     tournaments: state.tournaments,
     announcements: state.announcements,
     trainingPlans: state.trainingPlans,
+    classPlans: state.classPlans,
     attendances: state.attendances,
     evaluations: state.evaluations,
     challengeParameters: state.challengeParameters,
@@ -1632,6 +1893,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     expenseCategories: state.expenseCategories,
     evaluationFields: state.evaluationFields,
     notifications: state.notifications,
+    coachSpecializations: state.coachSpecializations,
     darkMode: state.darkMode,
     toggleDarkMode,
     login,
@@ -1645,6 +1907,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     updateAnnouncement,
     deleteAnnouncement,
     addTournament,
+    updateTournament,
+    deleteTournament,
     markAttendance,
     addEvaluation,
     addClassPlan,
@@ -1673,7 +1937,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     addCoach,
     updateCoach,
     deleteCoach,
-    addUser
+    addUser,
+    addCoachSpecialization,
+    updateCoachSpecialization,
+    deleteCoachSpecialization,
+    dispatch
   };
 
   return (

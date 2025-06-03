@@ -121,7 +121,7 @@ La página está organizada en 4 pestañas principales:
 ### **Navegación**
 ```tsx
 // Sidebar.tsx
-{ icon: FiBook, label: 'Clases y Planes', path: '/parent/classes' }
+{ icon: FiBook, label: 'Clases', path: '/parent/classes' }
 ```
 
 ### **Datos de Ejemplo**

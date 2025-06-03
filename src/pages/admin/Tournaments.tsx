@@ -48,7 +48,7 @@ interface Team {
 }
 
 const Tournaments: React.FC = () => {
-  const { categories, students } = useAppContext();
+  const { categories, students, tournaments, addTournament, updateTournament, deleteTournament } = useAppContext();
   const [activeTab, setActiveTab] = useState<'tournaments' | 'teams' | 'schedule'>('tournaments');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'active' | 'completed' | 'cancelled'>('all');
@@ -56,56 +56,14 @@ const Tournaments: React.FC = () => {
   const [showTournamentModal, setShowTournamentModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [tournamentToDelete, setTournamentToDelete] = useState<Tournament | null>(null);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [selectedTournament, setSelectedTournament] = useState<string>('');
 
-  // Mock data for tournaments
-  const [tournaments, setTournaments] = useState<Tournament[]>([
-    {
-      id: '1',
-      name: 'Copa Primavera 2024',
-      description: 'Torneo de voleibol juvenil categoría mixta',
-      category: 'juvenil',
-      startDate: '2024-03-15',
-      endDate: '2024-03-17',
-      location: 'Polideportivo Central',
-      maxTeams: 16,
-      registeredTeams: 12,
-      registrationFee: 125,
-      status: 'upcoming',
-      prizes: [
-        { position: 1, reward: 'Trofeo de Oro + Medallas', amount: 1250 },
-        { position: 2, reward: 'Trofeo de Plata + Medallas', amount: 750 },
-        { position: 3, reward: 'Trofeo de Bronce + Medallas', amount: 375 }
-      ],
-      schedule: [],
-      rules: 'Reglamento oficial de voleibol. Equipos de 6 jugadores. Partidos a 3 sets.'
-    },
-    {
-      id: '2',
-      name: 'Torneo Infantil',
-      description: 'Competencia para categorías menores',
-      category: 'infantil',
-      startDate: '2024-02-20',
-      endDate: '2024-02-22',
-      location: 'Coliseo Municipal',
-      maxTeams: 12,
-      registeredTeams: 10,
-      registrationFee: 75,
-      status: 'active',
-      prizes: [
-        { position: 1, reward: 'Trofeo + Kit deportivo' },
-        { position: 2, reward: 'Medallas + Kit deportivo' },
-        { position: 3, reward: 'Medallas' }
-      ],
-      schedule: [],
-      rules: 'Adaptaciones para categoría infantil. Menor altura de red.'
-    }
-  ]);
-
-  // Mock data for teams
+  // Local state for teams (not in global context yet)
   const [teams, setTeams] = useState<Team[]>([
     {
       id: '1',
@@ -135,22 +93,31 @@ const Tournaments: React.FC = () => {
 
   const handleTournamentSubmit = (tournamentData: Partial<Tournament>) => {
     if (editingTournament) {
-      setTournaments(tournaments.map(t => 
-        t.id === editingTournament.id ? { ...t, ...tournamentData } : t
-      ));
+      updateTournament(editingTournament.id, tournamentData);
     } else {
-      const newTournament: Tournament = {
-        id: Date.now().toString(),
-        ...tournamentData as Tournament,
+      const newTournament = {
+        ...tournamentData,
         registeredTeams: 0,
         prizes: [],
         schedule: []
-      };
-      setTournaments([...tournaments, newTournament]);
-      console.log('Nuevo torneo agregado:', newTournament);
+      } as Omit<Tournament, 'id'>;
+      addTournament(newTournament);
     }
     setShowTournamentModal(false);
     setEditingTournament(null);
+  };
+
+  const handleDeleteTournament = (tournament: Tournament) => {
+    setTournamentToDelete(tournament);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteTournament = () => {
+    if (tournamentToDelete) {
+      deleteTournament(tournamentToDelete.id);
+      setShowDeleteModal(false);
+      setTournamentToDelete(null);
+    }
   };
 
   const handleTeamSubmit = (teamData: Partial<Team>) => {
@@ -177,20 +144,17 @@ const Tournaments: React.FC = () => {
   };
 
   const handleMatchSubmit = (matchData: Partial<Match>) => {
+    const tournament = tournaments.find(t => t.id === selectedTournament);
+    if (!tournament) return;
+
     if (editingMatch) {
       // Editar partido existente
-      setTournaments(tournaments.map(tournament => 
-        tournament.id === selectedTournament 
-          ? { 
-              ...tournament, 
-              schedule: tournament.schedule.map(match =>
-                match.id === editingMatch.id 
-                  ? { ...match, ...matchData }
-                  : match
-              )
-            }
-          : tournament
-      ));
+      const updatedSchedule = tournament.schedule.map(match =>
+        match.id === editingMatch.id 
+          ? { ...match, ...matchData }
+          : match
+      );
+      updateTournament(selectedTournament, { schedule: updatedSchedule });
     } else {
       // Crear nuevo partido
       const newMatch: Match = {
@@ -199,11 +163,8 @@ const Tournaments: React.FC = () => {
         ...matchData as Match
       };
       
-      setTournaments(tournaments.map(tournament => 
-        tournament.id === selectedTournament 
-          ? { ...tournament, schedule: [...tournament.schedule, newMatch] }
-          : tournament
-      ));
+      const updatedSchedule = [...tournament.schedule, newMatch];
+      updateTournament(selectedTournament, { schedule: updatedSchedule });
     }
     
     setShowMatchModal(false);
@@ -212,14 +173,11 @@ const Tournaments: React.FC = () => {
 
   const handleDeleteMatch = (matchId: string) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este partido?')) {
-      setTournaments(tournaments.map(tournament => 
-        tournament.id === selectedTournament 
-          ? { 
-              ...tournament, 
-              schedule: tournament.schedule.filter(match => match.id !== matchId)
-            }
-          : tournament
-      ));
+      const tournament = tournaments.find(t => t.id === selectedTournament);
+      if (!tournament) return;
+      
+      const updatedSchedule = tournament.schedule.filter(match => match.id !== matchId);
+      updateTournament(selectedTournament, { schedule: updatedSchedule });
     }
   };
 
@@ -399,7 +357,11 @@ const Tournaments: React.FC = () => {
                         >
                           <FiEdit size={16} />
                         </button>
-                        <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                        <button 
+                          onClick={() => handleDeleteTournament(tournament)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          title="Eliminar torneo"
+                        >
                           <FiTrash2 size={16} />
                         </button>
                       </div>
@@ -646,7 +608,7 @@ const Tournaments: React.FC = () => {
 
       {/* Tournament Modal */}
       {showTournamentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/70 flex items-center justify-center z-[9999]">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -807,7 +769,7 @@ const Tournaments: React.FC = () => {
 
       {/* Team Modal */}
       {showTeamModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/70 flex items-center justify-center z-[9999]">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -908,7 +870,7 @@ const Tournaments: React.FC = () => {
 
       {/* Match Modal */}
       {showMatchModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/70 flex items-center justify-center z-[9999]">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1008,6 +970,42 @@ const Tournaments: React.FC = () => {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/70 flex items-center justify-center z-[9999]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Confirmar Eliminación
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              ¿Estás seguro de que deseas eliminar el torneo <strong>{tournamentToDelete?.name}</strong>? 
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setTournamentToDelete(null);
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDeleteTournament}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Eliminar
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

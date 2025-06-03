@@ -6,7 +6,10 @@ interface User {
   name: string;
   role: 'admin' | 'coach' | 'parent' | 'student';
   profileImage?: string;
+  phone?: string;
   active: boolean;
+  specialization?: string[];
+  experience?: number;
 }
 
 interface Category {
@@ -88,6 +91,21 @@ interface Announcement {
   targetAudience: ('all' | 'parents' | 'students' | 'coaches')[];
   pinned: boolean;
   expiryDate?: Date;
+}
+
+interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  categoryName?: string;
+  date: string;
+  paymentMethod: 'cash' | 'transfer' | 'card';
+  supplier?: string;
+  receiptNumber?: string;
+  approvedBy: string;
+  recurring: boolean;
+  frequency?: 'monthly' | 'quarterly' | 'annual';
 }
 
 interface TrainingPlan {
@@ -271,7 +289,9 @@ export const mockUsers: User[] = [
     role: 'coach',
     phone: '999-111-222',
     profileImage: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400&h=400&fit=crop',
-    active: true
+    active: true,
+    specialization: ['Técnica', 'Preparación Física'],
+    experience: 8
   },
   {
     id: 'coach2',
@@ -281,7 +301,9 @@ export const mockUsers: User[] = [
     role: 'coach',
     phone: '999-222-333',
     profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
-    active: true
+    active: true,
+    specialization: ['Preparación Física', 'Táctica', 'Análisis de Video'],
+    experience: 12
   },
   {
     id: 'coach3',
@@ -291,7 +313,9 @@ export const mockUsers: User[] = [
     role: 'coach',
     phone: '999-333-444',
     profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-    active: true
+    active: true,
+    specialization: ['Táctica', 'Psicología Deportiva', 'Nutrición'],
+    experience: 15
   },
   // Parents
   {
@@ -641,264 +665,495 @@ export const mockCoaches: any[] = [
   }
 ];
 
-// Pagos mock
+// Pagos mock - Junio 2025
 export const mockPayments: Payment[] = [
-  // Pagos del student1 (Sofía - parent1)
+  // Pagos completados - Mensualidades Junio 2025
+  // Categoría Infantil (8 estudiantes)
   {
-    id: 'pay1',
+    id: 'pay_001',
     studentId: 'student1',
-    amount: 45.00,
-    concept: 'Mensualidad Enero 2024',
-    date: new Date('2024-01-05'),
-    status: 'completed',
-    method: 'cash',
-    receiptNumber: 'REC-2024-0001'
+    studentName: 'Sofía Martínez',
+    amount: 180,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'transfer' as const,
+    status: 'paid' as const,
+    date: '2025-06-01',
+    datetime: '2025-06-01T10:30:00',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-01',
+    category: 'cat_infantil'
   },
   {
-    id: 'pay2',
-    studentId: 'student1',
-    amount: 45.00,
-    concept: 'Mensualidad Febrero 2024',
-    date: new Date('2024-02-03'),
-    status: 'completed',
-    method: 'transfer',
-    receiptNumber: 'REC-2024-0015'
-  },
-  {
-    id: 'pay3',
-    studentId: 'student1',
-    amount: 45.00,
-    concept: 'Mensualidad Marzo 2024',
-    date: new Date('2024-03-02'),
-    status: 'pending',
-    dueDate: new Date('2024-03-05')
-  },
-  // Pagos del student2 (Diego - parent2)
-  {
-    id: 'pay4',
-    studentId: 'student2',
-    amount: 45.00,
-    concept: 'Mensualidad Enero 2024',
-    date: new Date('2024-01-10'),
-    status: 'completed',
-    method: 'card',
-    receiptNumber: 'REC-2024-0003'
-  },
-  {
-    id: 'pay5',
-    studentId: 'student2',
-    amount: 45.00,
-    concept: 'Mensualidad Febrero 2024',
-    date: new Date('2024-02-08'),
-    status: 'completed',
-    method: 'cash',
-    receiptNumber: 'REC-2024-0018'
-  },
-  // Pagos del student3 (Valentina - parent3)
-  {
-    id: 'pay6',
-    studentId: 'student3',
-    amount: 50.00,
-    concept: 'Mensualidad Enero 2024',
-    date: new Date('2024-01-03'),
-    status: 'completed',
-    method: 'transfer',
-    receiptNumber: 'REC-2024-0002'
-  },
-  {
-    id: 'pay7',
-    studentId: 'student3',
-    amount: 50.00,
-    concept: 'Mensualidad Febrero 2024',
-    date: new Date('2024-02-05'),
-    status: 'completed',
-    method: 'transfer',
-    receiptNumber: 'REC-2024-0016'
-  },
-  {
-    id: 'pay8',
-    studentId: 'student3',
-    amount: 50.00,
-    concept: 'Mensualidad Marzo 2024',
-    date: new Date('2024-03-01'),
-    status: 'pending',
-    dueDate: new Date('2024-03-05')
-  },
-  // Pagos del student4 (Mateo - parent4)
-  {
-    id: 'pay9',
+    id: 'pay_002',
     studentId: 'student4',
-    amount: 50.00,
-    concept: 'Mensualidad Enero 2024',
-    date: new Date('2024-01-15'),
-    status: 'completed',
-    method: 'cash',
-    receiptNumber: 'REC-2024-0008'
+    studentName: 'Isabella López',
+    amount: 180,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'cash' as const,
+    status: 'paid' as const,
+    date: '2025-06-02',
+    datetime: '2025-06-02T14:15:00',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-02',
+    category: 'cat_infantil'
   },
+  // Más pagos infantiles...
   {
-    id: 'pay10',
-    studentId: 'student4',
-    amount: 50.00,
-    concept: 'Mensualidad Febrero 2024',
-    date: new Date('2024-02-12'),
-    status: 'completed',
-    method: 'card',
-    receiptNumber: 'REC-2024-0020'
-  },
-  // Pagos del student5 (Camila - parent5)
-  {
-    id: 'pay11',
-    studentId: 'student5',
-    amount: 70.00,
-    concept: 'Mensualidad Enero 2024',
-    date: new Date('2024-01-08'),
-    status: 'completed',
-    method: 'transfer',
-    receiptNumber: 'REC-2024-0004'
-  },
-  {
-    id: 'pay12',
-    studentId: 'student5',
-    amount: 70.00,
-    concept: 'Mensualidad Febrero 2024',
-    date: new Date('2024-02-07'),
-    status: 'completed',
-    method: 'transfer',
-    receiptNumber: 'REC-2024-0017'
-  },
-  {
-    id: 'pay13',
-    studentId: 'student5',
-    amount: 70.00,
-    concept: 'Mensualidad Marzo 2024',
-    date: new Date('2024-03-03'),
-    status: 'pending',
-    dueDate: new Date('2024-03-05')
-  },
-  // Pagos del student6 (Lucas - parent6)
-  {
-    id: 'pay14',
-    studentId: 'student6',
-    amount: 70.00,
-    concept: 'Mensualidad Enero 2024',
-    date: new Date('2024-01-11'),
-    status: 'completed',
-    method: 'cash',
-    receiptNumber: 'REC-2024-0005'
-  },
-  {
-    id: 'pay15',
-    studentId: 'student6',
-    amount: 70.00,
-    concept: 'Mensualidad Febrero 2024',
-    date: new Date('2024-02-09'),
-    status: 'completed',
-    method: 'card',
-    receiptNumber: 'REC-2024-0019'
-  },
-  // Pago con inscripción
-  {
-    id: 'pay16',
+    id: 'pay_003',
     studentId: 'student7',
-    amount: 95.00, // 45 mensualidad + 50 inscripción
-    concept: 'Inscripción + Mensualidad Febrero 2024',
-    date: new Date('2024-02-01'),
-    status: 'completed',
-    method: 'transfer',
-    receiptNumber: 'REC-2024-0021',
-    notes: 'Incluye cuota de inscripción'
+    studentName: 'Daniela Vargas',
+    amount: 180,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'transfer' as const,
+    status: 'paid' as const,
+    date: '2025-06-03',
+    datetime: '2025-06-03T11:20:00',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-03',
+    category: 'cat_infantil'
   },
-  // Pago de torneo
+  
+  // Categoría Pre-Juvenil (10 estudiantes)
   {
-    id: 'pay17',
+    id: 'pay_010',
+    studentId: 'student2',
+    studentName: 'María Rodríguez',
+    amount: 200,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'transfer' as const,
+    status: 'paid' as const,
+    date: '2025-06-01',
+    datetime: '2025-06-01T09:45:00',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-01',
+    category: 'cat_pre-juvenil'
+  },
+  {
+    id: 'pay_011',
     studentId: 'student5',
-    amount: 35.00,
-    concept: 'Inscripción Torneo Regional Marzo 2024',
-    date: new Date('2024-02-15'),
-    status: 'completed',
-    method: 'cash',
-    receiptNumber: 'REC-2024-0022',
-    notes: 'Torneo regional categoría competitiva'
+    studentName: 'Camila Torres',
+    amount: 200,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'cash' as const,
+    status: 'paid' as const,
+    date: '2025-06-02',
+    datetime: '2025-06-02T16:30:00',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-02',
+    category: 'cat_pre-juvenil'
   },
-  // Pago parcial
   {
-    id: 'pay18',
+    id: 'pay_012',
     studentId: 'student8',
-    amount: 25.00,
-    concept: 'Pago parcial - Mensualidad Febrero 2024',
-    date: new Date('2024-02-14'),
-    status: 'completed',
-    method: 'cash',
-    receiptNumber: 'REC-2024-0023',
-    notes: 'Pago parcial 1/2'
+    studentName: 'Carmen Silva',
+    amount: 200,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'transfer' as const,
+    status: 'pending' as const,
+    date: '2025-06-05',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025 - PENDIENTE',
+    category: 'cat_pre-juvenil'
   },
+  
+  // Categoría Juvenil A (12 estudiantes)
   {
-    id: 'pay19',
-    studentId: 'student8',
-    amount: 25.00,
-    concept: 'Pago parcial - Mensualidad Febrero 2024',
-    date: new Date('2024-02-20'),
-    status: 'pending',
-    dueDate: new Date('2024-02-20'),
-    notes: 'Pago parcial 2/2'
-  },
-  // Pagos pendientes de aprobación - IMPORTANTE: estos son los que necesitan aprobación
-  {
-    id: 'pay20',
-    studentId: 'student9',
-    amount: 70.00,
-    concept: 'Mensualidad Marzo 2024',
-    date: new Date('2024-02-28'),
-    status: 'pending',
-    method: 'transfer',
-    pendingApproval: true,
-    receiptUrl: 'https://example.com/receipt1.jpg',
-    notes: 'Transferencia bancaria - Esperando verificación'
-  },
-  {
-    id: 'pay21',
-    studentId: 'student10',
-    amount: 45.00,
-    concept: 'Mensualidad Marzo 2024',
-    date: new Date('2024-02-29'),
-    status: 'pending',
-    method: 'transfer',
-    pendingApproval: true,
-    receiptUrl: 'https://example.com/receipt2.jpg',
-    notes: 'Pago por aplicación móvil'
-  },
-  {
-    id: 'pay22',
+    id: 'pay_020',
     studentId: 'student3',
-    amount: 50.00,
-    concept: 'Mensualidad Abril 2024',
-    date: new Date('2024-03-01'),
-    status: 'pending',
-    method: 'transfer',
-    pendingApproval: true,
-    receiptUrl: 'https://example.com/receipt3.jpg',
-    notes: 'Transferencia desde app bancaria'
-  },
-  // Pagos históricos más antiguos
-  {
-    id: 'pay23',
-    studentId: 'student5',
-    amount: 70.00,
-    concept: 'Mensualidad Diciembre 2023',
-    date: new Date('2023-12-05'),
-    status: 'completed',
-    method: 'transfer',
-    receiptNumber: 'REC-2023-0180'
+    studentName: 'Lucía Mendoza',
+    amount: 220,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'transfer' as const,
+    status: 'overdue' as const,
+    date: '2025-06-10',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025 - VENCIDA',
+    category: 'cat_juvenil'
   },
   {
-    id: 'pay24',
+    id: 'pay_021',
     studentId: 'student6',
-    amount: 70.00,
-    concept: 'Mensualidad Diciembre 2023',
-    date: new Date('2023-12-08'),
-    status: 'completed',
-    method: 'cash',
-    receiptNumber: 'REC-2023-0182'
+    studentName: 'Andrea Ruiz',
+    amount: 220,
+    type: 'payment_monthly',
+    typeName: 'Mensualidad',
+    method: 'card' as const,
+    status: 'paid' as const,
+    date: '2025-06-01',
+    datetime: '2025-06-01T12:00:00',
+    dueDate: '2025-06-05',
+    description: 'Mensualidad Junio 2025',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-01',
+    category: 'cat_juvenil'
+  },
+  
+  // Otros ingresos
+  {
+    id: 'pay_030',
+    studentId: 'student9',
+    studentName: 'Patricia Flores',
+    amount: 150,
+    type: 'payment_registration',
+    typeName: 'Matrícula',
+    method: 'transfer' as const,
+    status: 'paid' as const,
+    date: '2025-06-01',
+    datetime: '2025-06-01T08:30:00',
+    dueDate: '2025-06-01',
+    description: 'Matrícula nueva estudiante',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-01',
+    category: 'cat_juvenil'
+  },
+  {
+    id: 'pay_031',
+    studentId: 'student10',
+    studentName: 'Diana Castro',
+    amount: 85,
+    type: 'payment_uniform',
+    typeName: 'Uniforme',
+    method: 'cash' as const,
+    status: 'paid' as const,
+    date: '2025-06-02',
+    datetime: '2025-06-02T15:45:00',
+    dueDate: '2025-06-02',
+    description: 'Uniforme completo talla M',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-02',
+    category: 'cat_infantil'
+  },
+  {
+    id: 'pay_032',
+    studentId: 'student1',
+    studentName: 'Sofía Martínez',
+    amount: 50,
+    type: 'payment_tournament',
+    typeName: 'Torneo',
+    method: 'transfer' as const,
+    status: 'paid' as const,
+    date: '2025-06-03',
+    datetime: '2025-06-03T10:00:00',
+    dueDate: '2025-06-10',
+    description: 'Inscripción Torneo Inter-Academias Junio',
+    approved: true,
+    approvedBy: 'admin1',
+    approvedDate: '2025-06-03',
+    category: 'cat_infantil'
+  }
+];
+
+// Gastos mock - 2025
+export const mockExpenses: Expense[] = [
+  // GASTOS DE ENERO 2025
+  {
+    id: 'exp_jan_001',
+    description: 'Alquiler de canchas - Enero 2025',
+    amount: 2500,
+    category: 'alquiler',
+    categoryName: 'Alquiler',
+    date: '2025-01-01',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Complejo Deportivo Lima',
+    receiptNumber: 'F001-00201',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_jan_002',
+    description: 'Servicios básicos - Enero',
+    amount: 420,
+    category: 'servicios',
+    categoryName: 'Servicios',
+    date: '2025-01-05',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Servicios Públicos',
+    receiptNumber: 'R-2025-01-001',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  
+  // GASTOS DE FEBRERO 2025
+  {
+    id: 'exp_feb_001',
+    description: 'Alquiler de canchas - Febrero 2025',
+    amount: 2500,
+    category: 'alquiler',
+    categoryName: 'Alquiler',
+    date: '2025-02-01',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Complejo Deportivo Lima',
+    receiptNumber: 'F001-00210',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_feb_002',
+    description: 'Servicios básicos - Febrero',
+    amount: 430,
+    category: 'servicios',
+    categoryName: 'Servicios',
+    date: '2025-02-05',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Servicios Públicos',
+    receiptNumber: 'R-2025-02-001',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  
+  // GASTOS DE MARZO 2025
+  {
+    id: 'exp_mar_001',
+    description: 'Alquiler de canchas - Marzo 2025',
+    amount: 2500,
+    category: 'alquiler',
+    categoryName: 'Alquiler',
+    date: '2025-03-01',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Complejo Deportivo Lima',
+    receiptNumber: 'F001-00220',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_mar_002',
+    description: 'Compra de uniformes equipo juvenil',
+    amount: 850,
+    category: 'equipamiento',
+    categoryName: 'Equipamiento',
+    date: '2025-03-15',
+    paymentMethod: 'cash' as const,
+    supplier: 'Deportes Elite',
+    receiptNumber: 'B003-0123',
+    approvedBy: 'admin1',
+    recurring: false
+  },
+  
+  // GASTOS DE ABRIL 2025
+  {
+    id: 'exp_apr_001',
+    description: 'Alquiler de canchas - Abril 2025',
+    amount: 2500,
+    category: 'alquiler',
+    categoryName: 'Alquiler',
+    date: '2025-04-01',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Complejo Deportivo Lima',
+    receiptNumber: 'F001-00225',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_apr_002',
+    description: 'Mantenimiento general de instalaciones',
+    amount: 600,
+    category: 'mantenimiento',
+    categoryName: 'Mantenimiento',
+    date: '2025-04-10',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Servicios Generales SAC',
+    receiptNumber: 'F004-0089',
+    approvedBy: 'admin1',
+    recurring: false
+  },
+  
+  // GASTOS DE MAYO 2025
+  {
+    id: 'exp_may_001',
+    description: 'Alquiler de canchas - Mayo 2025',
+    amount: 2500,
+    category: 'alquiler',
+    categoryName: 'Alquiler',
+    date: '2025-05-01',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Complejo Deportivo Lima',
+    receiptNumber: 'F001-00230',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_may_002',
+    description: 'Servicios básicos - Mayo',
+    amount: 440,
+    category: 'servicios',
+    categoryName: 'Servicios',
+    date: '2025-05-05',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Servicios Públicos',
+    receiptNumber: 'R-2025-05-001',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_may_003',
+    description: 'Renovación de material didáctico',
+    amount: 320,
+    category: 'equipamiento',
+    categoryName: 'Equipamiento',
+    date: '2025-05-20',
+    paymentMethod: 'cash' as const,
+    supplier: 'Librería Deportiva',
+    receiptNumber: 'B005-0234',
+    approvedBy: 'admin1',
+    recurring: false
+  },
+  
+  // GASTOS DE JUNIO 2025 (originales)
+  {
+    id: 'exp_001',
+    description: 'Alquiler de canchas - Junio 2025',
+    amount: 2500,
+    category: 'alquiler',
+    categoryName: 'Alquiler',
+    date: '2025-06-01',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Complejo Deportivo Lima',
+    receiptNumber: 'F001-00234',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_002',
+    description: 'Servicios básicos (luz, agua)',
+    amount: 450,
+    category: 'servicios',
+    categoryName: 'Servicios',
+    date: '2025-06-05',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Servicios Públicos',
+    receiptNumber: 'R-2025-06-001',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_003',
+    description: 'Internet y WiFi',
+    amount: 120,
+    category: 'servicios',
+    categoryName: 'Servicios',
+    date: '2025-06-05',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Movistar',
+    receiptNumber: 'MOV-2025-06-001',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  {
+    id: 'exp_004',
+    description: 'Seguro deportivo grupal',
+    amount: 380,
+    category: 'servicios',
+    categoryName: 'Servicios',
+    date: '2025-06-01',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Pacífico Seguros',
+    receiptNumber: 'SEG-2025-06',
+    approvedBy: 'admin1',
+    recurring: true,
+    frequency: 'monthly' as const
+  },
+  
+  // Gastos Variables
+  {
+    id: 'exp_005',
+    description: 'Compra de 12 balones oficiales',
+    amount: 720,
+    category: 'equipamiento',
+    categoryName: 'Equipamiento',
+    date: '2025-06-02',
+    paymentMethod: 'cash' as const,
+    supplier: 'Deportes Total',
+    receiptNumber: 'B001-1234',
+    approvedBy: 'admin1',
+    recurring: false
+  },
+  {
+    id: 'exp_006',
+    description: 'Mantenimiento y reparación de redes',
+    amount: 180,
+    category: 'mantenimiento',
+    categoryName: 'Mantenimiento',
+    date: '2025-06-03',
+    paymentMethod: 'cash' as const,
+    supplier: 'Servicios Deportivos Lima',
+    receiptNumber: 'B002-0045',
+    approvedBy: 'admin1',
+    recurring: false
+  },
+  {
+    id: 'exp_007',
+    description: 'Material de entrenamiento (conos, escaleras)',
+    amount: 250,
+    category: 'equipamiento',
+    categoryName: 'Equipamiento',
+    date: '2025-06-04',
+    paymentMethod: 'transfer' as const,
+    supplier: 'Sport Equipment Peru',
+    receiptNumber: 'F002-0567',
+    approvedBy: 'admin1',
+    recurring: false
+  },
+  {
+    id: 'exp_008',
+    description: 'Transporte para torneo',
+    amount: 400,
+    category: 'otros',
+    categoryName: 'Otros',
+    date: '2025-06-15',
+    paymentMethod: 'cash' as const,
+    supplier: 'Transportes Seguros SAC',
+    receiptNumber: 'T-2025-06-01',
+    approvedBy: 'admin1',
+    recurring: false
+  },
+  {
+    id: 'exp_009',
+    description: 'Pago arbitraje torneo',
+    amount: 300,
+    category: 'personal',
+    categoryName: 'Personal',
+    date: '2025-06-15',
+    paymentMethod: 'cash' as const,
+    supplier: 'Federación Peruana de Voleibol',
+    receiptNumber: 'ARB-2025-06',
+    approvedBy: 'admin1',
+    recurring: false
   }
 ];
 
@@ -995,8 +1250,81 @@ export const mockSchedules: Schedule[] = [
     recurring: true
   }
 ];
-export const mockTournaments: Tournament[] = [];
-export const mockAnnouncements: Announcement[] = [];
+export const mockTournaments: Tournament[] = [
+  {
+    id: 'tourn1',
+    name: 'Torneo Regional de Voleibol',
+    date: new Date('2024-03-15'),
+    location: 'Polideportivo Municipal',
+    categories: ['cat_juvenil', 'cat_competitivo'],
+    registrationDeadline: new Date('2024-03-10'),
+    status: 'upcoming'
+  },
+  {
+    id: 'tourn2',
+    name: 'Copa de Verano 2024',
+    date: new Date('2024-03-22'),
+    location: 'Centro Deportivo Norte',
+    categories: ['cat_infantil', 'cat_juvenil'],
+    registrationDeadline: new Date('2024-03-18'),
+    status: 'upcoming'
+  },
+  {
+    id: 'tourn3',
+    name: 'Campeonato Interacademias',
+    date: new Date('2024-04-05'),
+    location: 'Coliseo Principal',
+    categories: ['cat_competitivo'],
+    registrationDeadline: new Date('2024-03-30'),
+    status: 'upcoming'
+  }
+];
+
+export const mockAnnouncements: Announcement[] = [
+  {
+    id: 'ann1',
+    title: '¡Próximo Torneo Regional!',
+    content: 'Se acerca el Torneo Regional de Voleibol. Las inscripciones están abiertas hasta el 10 de marzo. ¡No te lo pierdas!',
+    author: 'Admin Principal',
+    createdAt: new Date('2024-02-20'),
+    priority: 'high',
+    targetAudience: ['all'],
+    pinned: true,
+    expiryDate: new Date('2024-03-15')
+  },
+  {
+    id: 'ann2',
+    title: 'Horario especial próxima semana',
+    content: 'Debido al mantenimiento de las canchas, los entrenamientos del lunes se trasladarán al martes en el mismo horario.',
+    author: 'Sofía Martínez',
+    createdAt: new Date('2024-02-25'),
+    priority: 'medium',
+    targetAudience: ['students', 'parents'],
+    pinned: false,
+    expiryDate: new Date('2024-03-04')
+  },
+  {
+    id: 'ann3',
+    title: 'Nueva equipación disponible',
+    content: 'Ya está disponible la nueva equipación de la academia. Pueden realizar sus pedidos en recepción.',
+    author: 'Admin Principal',
+    createdAt: new Date('2024-02-18'),
+    priority: 'low',
+    targetAudience: ['all'],
+    pinned: false
+  },
+  {
+    id: 'ann4',
+    title: 'Reunión de padres - Categoría Juvenil',
+    content: 'Se convoca a todos los padres de la categoría juvenil a una reunión el próximo viernes a las 19:00h para discutir los próximos torneos.',
+    author: 'Juan Pérez',
+    createdAt: new Date('2024-02-24'),
+    priority: 'high',
+    targetAudience: ['parents'],
+    pinned: true,
+    expiryDate: new Date('2024-03-01')
+  }
+];
 export const mockTrainingPlans: TrainingPlan[] = [
   {
     id: 'plan1',
@@ -1273,252 +1601,228 @@ export const mockTrainingPlans: TrainingPlan[] = [
   }
 ];
 
-// Class Plans mock
-export const mockClassPlans: ClassPlan[] = [
-  {
-    id: 'class1',
-    title: 'Técnica de Remate',
-    category: 'Juvenil A',
-    date: new Date('2024-01-15'),
-    startTime: '16:00',
-    endTime: '17:30',
-    duration: 90,
-    location: 'Cancha Principal',
-    coachId: 'coach1',
-    objectives: ['Mejorar técnica de aproximación', 'Perfeccionar timing de salto', 'Aumentar potencia de remate'],
-    materials: [
-      { id: 'm1', name: 'Balones de voleibol', type: 'equipment', description: '12 balones oficiales', required: true },
-      { id: 'm2', name: 'Conos marcadores', type: 'equipment', description: '8 conos para delimitar zonas', required: true },
-      { id: 'm3', name: 'Video técnica de remate', type: 'video', url: 'https://youtube.com/watch?v=ejemplo', required: false }
-    ],
-    warmUpPlan: {
-      exercises: [
-        { name: 'Trote suave', duration: 5, description: 'Trote alrededor de la cancha' },
-        { name: 'Movilidad articular', duration: 5, description: 'Ejercicios de movilidad para hombros y cadera' }
-      ],
-      totalDuration: 10
-    },
-    mainActivityPlan: {
-      exercises: [
-        { name: 'Aproximación sin balón', duration: 15, description: 'Práctica de pasos de aproximación' },
-        { name: 'Remate contra pared', duration: 20, description: 'Técnica de golpeo contra la pared' },
-        { name: 'Remate con colocador', duration: 25, description: 'Práctica completa con pase del colocador' }
-      ],
-      totalDuration: 60
-    },
-    coolDownPlan: {
-      exercises: [
-        { name: 'Estiramientos estáticos', duration: 10, description: 'Estiramiento de principales grupos musculares' },
-        { name: 'Relajación', duration: 10, description: 'Ejercicios de respiración y relajación' }
-      ],
-      totalDuration: 20
-    },
-    createdAt: new Date('2024-01-10')
-  },
-  {
-    id: 'class2',
-    title: 'Defensa en Red',
-    category: 'Juvenil B',
-    date: new Date('2024-01-15'),
-    startTime: '18:00',
-    endTime: '19:15',
-    duration: 75,
-    location: 'Cancha Auxiliar',
-    coachId: 'coach2',
-    objectives: ['Coordinación en bloqueo doble', 'Lectura del atacante', 'Transición defensa-ataque'],
-    materials: [
-      { id: 'm4', name: 'Red regulamentaria', type: 'equipment', description: 'Red a altura oficial', required: true },
-      { id: 'm5', name: 'Guía de posiciones', type: 'document', url: '/docs/posiciones-defensa.pdf', required: false }
-    ],
-    warmUpPlan: {
-      exercises: [
-        { name: 'Calentamiento articular', duration: 10, description: 'Especial énfasis en muñecas y dedos' }
-      ],
-      totalDuration: 10
-    },
-    mainActivityPlan: {
-      exercises: [
-        { name: 'Técnica de bloqueo individual', duration: 20, description: 'Posición de manos y timing' },
-        { name: 'Bloqueo coordinado', duration: 30, description: 'Trabajo en parejas y tríos' }
-      ],
-      totalDuration: 50
-    },
-    coolDownPlan: {
-      exercises: [
-        { name: 'Estiramientos', duration: 15, description: 'Foco en brazos y espalda' }
-      ],
-      totalDuration: 15
-    },
-    createdAt: new Date('2024-01-10')
-  },
-  {
-    id: 'class3',
-    title: 'Servicio y Recepción',
-    category: 'Infantil',
-    date: new Date('2024-01-16'),
-    startTime: '15:30',
-    endTime: '16:30',
-    duration: 60,
-    location: 'Cancha Principal',
-    coachId: 'coach1',
-    objectives: ['Técnica básica de servicio', 'Posición de recepción', 'Comunicación en cancha'],
-    materials: [
-      { id: 'm6', name: 'Balones ligeros', type: 'equipment', description: 'Balones adaptados para categoría infantil', required: true },
-      { id: 'm7', name: 'Zona de servicio marcada', type: 'equipment', description: 'Cinta para marcar zona', required: true }
-    ],
-    warmUpPlan: {
-      exercises: [
-        { name: 'Juegos de coordinación', duration: 10, description: 'Juegos lúdicos con balón' }
-      ],
-      totalDuration: 10
-    },
-    mainActivityPlan: {
-      exercises: [
-        { name: 'Servicio bajo', duration: 20, description: 'Técnica básica de servicio' },
-        { name: 'Recepción básica', duration: 20, description: 'Posición y técnica de antebrazos' }
-      ],
-      totalDuration: 40
-    },
-    coolDownPlan: {
-      exercises: [
-        { name: 'Juego libre', duration: 5, description: 'Mini partido recreativo' },
-        { name: 'Estiramientos', duration: 5, description: 'Estiramientos suaves' }
-      ],
-      totalDuration: 10
-    },
-    createdAt: new Date('2024-01-11')
-  }
-];
+// Class Plans mock - Vacío para mostrar solo las clases creadas por el usuario
+export const mockClassPlans: ClassPlan[] = [];
 
+// Asistencias mock - Datos de ejemplo para mostrar estadísticas
 export const mockAttendances: Attendance[] = [
   // Asistencias para Sofía (student1) - Categoría Infantil
   {
     id: 'att1',
     studentId: 'student1',
     scheduleId: 'schedule1',
-    date: new Date('2024-02-05'), // Lunes pasado
+    date: new Date('2024-02-01'),
     present: true,
-    notes: 'Excelente participación en los ejercicios de servicio',
+    notes: 'Excelente participación en clase',
     checkedBy: 'coach1'
   },
   {
     id: 'att2',
-    studentId: 'student1',
+    studentId: 'student1', 
     scheduleId: 'schedule2',
-    date: new Date('2024-02-07'), // Miércoles pasado
+    date: new Date('2024-02-05'),
     present: true,
-    notes: 'Mejoró mucho en la recepción',
     checkedBy: 'coach1'
   },
   {
     id: 'att3',
     studentId: 'student1',
-    scheduleId: 'schedule3',
-    date: new Date('2024-02-09'), // Viernes pasado
+    scheduleId: 'schedule3', 
+    date: new Date('2024-02-07'),
     present: false,
-    notes: 'Falta justificada por examen médico',
+    notes: 'Faltó por enfermedad',
     checkedBy: 'coach1'
   },
   {
     id: 'att4',
     studentId: 'student1',
     scheduleId: 'schedule1',
-    date: new Date('2024-02-12'), // Lunes de esta semana
+    date: new Date('2024-02-08'),
     present: true,
-    notes: 'Buena actitud y concentración',
     checkedBy: 'coach1'
   },
   {
     id: 'att5',
     studentId: 'student1',
     scheduleId: 'schedule2',
-    date: new Date('2024-02-14'), // Miércoles de esta semana
+    date: new Date('2024-02-12'),
     present: true,
-    notes: 'Trabajó muy bien en equipo',
+    notes: 'Muy buen desempeño técnico',
     checkedBy: 'coach1'
   },
-  // Asistencias para Diego (student2) - Categoría Infantil
   {
     id: 'att6',
-    studentId: 'student2',
-    scheduleId: 'schedule1',
-    date: new Date('2024-02-05'),
+    studentId: 'student1',
+    scheduleId: 'schedule3',
+    date: new Date('2024-02-14'),
     present: true,
-    notes: 'Muy motivado en la práctica',
     checkedBy: 'coach1'
   },
   {
     id: 'att7',
-    studentId: 'student2',
-    scheduleId: 'schedule2',
-    date: new Date('2024-02-07'),
-    present: true,
-    notes: 'Necesita trabajar más en el servicio',
+    studentId: 'student1',
+    scheduleId: 'schedule1',
+    date: new Date('2024-02-15'),
+    present: false,
+    notes: 'Faltó por viaje familiar',
     checkedBy: 'coach1'
   },
   {
     id: 'att8',
-    studentId: 'student2',
-    scheduleId: 'schedule3',
-    date: new Date('2024-02-09'),
+    studentId: 'student1',
+    scheduleId: 'schedule2',
+    date: new Date('2024-02-19'),
     present: true,
-    notes: 'Gran mejora en el remate',
     checkedBy: 'coach1'
   },
-  // Asistencias para Valentina (student3) - Categoría Juvenil
   {
     id: 'att9',
-    studentId: 'student3',
-    scheduleId: 'schedule4',
-    date: new Date('2024-02-05'),
+    studentId: 'student1',
+    scheduleId: 'schedule3',
+    date: new Date('2024-02-21'),
     present: true,
-    notes: 'Excelente liderazgo en la cancha',
-    checkedBy: 'coach2'
+    notes: 'Lideró bien los ejercicios en equipo',
+    checkedBy: 'coach1'
   },
   {
     id: 'att10',
-    studentId: 'student3',
-    scheduleId: 'schedule5',
-    date: new Date('2024-02-07'),
+    studentId: 'student1',
+    scheduleId: 'schedule1',
+    date: new Date('2024-02-22'),
     present: true,
-    notes: 'Muy buena técnica de colocación',
-    checkedBy: 'coach2'
+    checkedBy: 'coach1'
   },
+  
+  // Asistencias para Diego (student2) - Categoría Infantil
   {
     id: 'att11',
-    studentId: 'student3',
-    scheduleId: 'schedule6',
-    date: new Date('2024-02-09'),
-    present: false,
-    notes: 'Falta no justificada',
-    checkedBy: 'coach2'
+    studentId: 'student2',
+    scheduleId: 'schedule1',
+    date: new Date('2024-02-01'),
+    present: true,
+    checkedBy: 'coach1'
   },
-  // Asistencias para Camila (student5) - Categoría Competitivo
   {
     id: 'att12',
-    studentId: 'student5',
-    scheduleId: 'schedule7',
-    date: new Date('2024-02-06'),
-    present: true,
-    notes: 'Rendimiento destacado en el entrenamiento',
-    checkedBy: 'coach3'
+    studentId: 'student2',
+    scheduleId: 'schedule2',
+    date: new Date('2024-02-05'),
+    present: false,
+    notes: 'Faltó por consulta médica',
+    checkedBy: 'coach1'
   },
   {
     id: 'att13',
-    studentId: 'student5',
-    scheduleId: 'schedule8',
-    date: new Date('2024-02-08'),
+    studentId: 'student2',
+    scheduleId: 'schedule3',
+    date: new Date('2024-02-07'),
     present: true,
-    notes: 'Excelente preparación física',
-    checkedBy: 'coach3'
+    checkedBy: 'coach1'
   },
   {
     id: 'att14',
+    studentId: 'student2',
+    scheduleId: 'schedule1',
+    date: new Date('2024-02-08'),
+    present: true,
+    notes: 'Mejoró mucho en los remates',
+    checkedBy: 'coach1'
+  },
+  {
+    id: 'att15',
+    studentId: 'student2',
+    scheduleId: 'schedule2',
+    date: new Date('2024-02-12'),
+    present: true,
+    checkedBy: 'coach1'
+  },
+
+  // Asistencias para Valentina (student3) - Categoría Juvenil
+  {
+    id: 'att16',
+    studentId: 'student3',
+    scheduleId: 'schedule4',
+    date: new Date('2024-02-01'),
+    present: true,
+    notes: 'Excelente técnica como siempre',
+    checkedBy: 'coach2'
+  },
+  {
+    id: 'att17',
+    studentId: 'student3',
+    scheduleId: 'schedule5',
+    date: new Date('2024-02-05'),
+    present: true,
+    checkedBy: 'coach2'
+  },
+  {
+    id: 'att18',
+    studentId: 'student3',
+    scheduleId: 'schedule6',
+    date: new Date('2024-02-07'),
+    present: true,
+    checkedBy: 'coach2'
+  },
+  {
+    id: 'att19',
+    studentId: 'student3',
+    scheduleId: 'schedule4',
+    date: new Date('2024-02-08'),
+    present: true,
+    notes: 'Lideró al equipo brillantemente',
+    checkedBy: 'coach2'
+  },
+  {
+    id: 'att20',
+    studentId: 'student3',
+    scheduleId: 'schedule5',
+    date: new Date('2024-02-12'),
+    present: true,
+    checkedBy: 'coach2'
+  },
+
+  // Asistencias para Camila (student5) - Categoría Competitivo
+  {
+    id: 'att21',
+    studentId: 'student5',
+    scheduleId: 'schedule7',
+    date: new Date('2024-02-01'),
+    present: true,
+    notes: 'Entrenamiento intensivo completado perfectamente',
+    checkedBy: 'coach3'
+  },
+  {
+    id: 'att22',
+    studentId: 'student5',
+    scheduleId: 'schedule8',
+    date: new Date('2024-02-03'),
+    present: true,
+    checkedBy: 'coach3'
+  },
+  {
+    id: 'att23',
     studentId: 'student5',
     scheduleId: 'schedule9',
+    date: new Date('2024-02-05'),
+    present: false,
+    notes: 'Lesión menor en el tobillo',
+    checkedBy: 'coach3'
+  },
+  {
+    id: 'att24',
+    studentId: 'student5',
+    scheduleId: 'schedule7',
+    date: new Date('2024-02-08'),
+    present: true,
+    notes: 'Recuperada de la lesión, excelente sesión',
+    checkedBy: 'coach3'
+  },
+  {
+    id: 'att25',
+    studentId: 'student5',
+    scheduleId: 'schedule8',
     date: new Date('2024-02-10'),
     present: true,
-    notes: 'Lista para el próximo torneo',
     checkedBy: 'coach3'
   }
 ];
@@ -1826,3 +2130,112 @@ export const defaultCredentials = {
   parent: { email: 'lucia.garcia@email.com', password: 'parent123' },
   student: { email: 'sofia.martinez@email.com', password: 'student123' }
 };
+
+// Función para agregar un nuevo estudiante
+export function addNewStudent(studentData: {
+  studentName: string;
+  studentEmail: string;
+  studentPassword: string;
+  parentName: string;
+  parentEmail: string;
+  parentPassword: string;
+  categoryId: string;
+  dateOfBirth: Date;
+  medicalInfo?: string;
+  position?: string;
+  jerseyNumber?: number;
+}) {
+  // Generar IDs únicos
+  const studentUserId = `student${mockUsers.filter(u => u.role === 'student').length + 1}`;
+  const parentUserId = `parent${mockUsers.filter(u => u.role === 'parent').length + 1}`;
+  
+  // Crear usuario del estudiante
+  const newStudentUser: User = {
+    id: studentUserId,
+    email: studentData.studentEmail,
+    password: studentData.studentPassword,
+    name: studentData.studentName,
+    role: 'student',
+    profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
+    active: true
+  };
+  
+  // Crear usuario del padre
+  const newParentUser: User = {
+    id: parentUserId,
+    email: studentData.parentEmail,
+    password: studentData.parentPassword,
+    name: studentData.parentName,
+    role: 'parent',
+    profileImage: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop',
+    active: true
+  };
+  
+  // Crear registro del estudiante
+  const newStudent: Student = {
+    id: studentUserId,
+    userId: studentUserId,
+    parentId: parentUserId,
+    categoryId: studentData.categoryId,
+    dateOfBirth: studentData.dateOfBirth,
+    medicalInfo: studentData.medicalInfo || 'Sin condiciones médicas',
+    enrollmentDate: new Date(),
+    active: true,
+    position: studentData.position,
+    jerseyNumber: studentData.jerseyNumber
+  };
+  
+  // Agregar a los arrays
+  mockUsers.push(newStudentUser);
+  mockUsers.push(newParentUser);
+  mockStudents.push(newStudent);
+  
+  return { studentUser: newStudentUser, parentUser: newParentUser, student: newStudent };
+}
+
+// Función para agregar un nuevo entrenador
+export function addNewCoach(coachData: {
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+  specialization: string[];
+  experience: number;
+  certifications: string[];
+  assignedCategories: string[];
+}) {
+  // Generar ID único
+  const coachUserId = `coach${mockUsers.filter(u => u.role === 'coach').length + 1}`;
+  
+  // Crear usuario del entrenador
+  const newCoachUser: User = {
+    id: coachUserId,
+    email: coachData.email,
+    password: coachData.password,
+    name: coachData.name,
+    role: 'coach',
+    phone: coachData.phone,
+    profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+    active: true
+  };
+  
+  // Crear registro del entrenador
+  const newCoach = {
+    id: coachUserId,
+    name: coachData.name,
+    email: coachData.email,
+    phone: coachData.phone,
+    specialization: coachData.specialization,
+    experience: coachData.experience,
+    certifications: coachData.certifications,
+    hireDate: new Date(),
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+    assignedCategories: coachData.assignedCategories
+  };
+  
+  // Agregar a los arrays
+  mockUsers.push(newCoachUser);
+  mockCoaches.push(newCoach);
+  
+  return { coachUser: newCoachUser, coach: newCoach };
+}

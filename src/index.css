@@ -2,17 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Colores Modo Claro */
+  --color-primary: #010066;
+  --color-accent: #FCCD02;
+  --color-background: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-text: #000000;
+  --color-text-secondary: #666666;
+  --color-border: #E5E5E5;
+  --color-success: #10B981;
+  --color-error: #EF4444;
+  --color-warning: #F59E0B;
+}
+
+.dark {
+  /* Colores Modo Oscuro */
+  --color-primary: #010066;
+  --color-accent: #FCCD02;
+  --color-background: #0A0A0A;
+  --color-surface: #1A1A1A;
+  --color-text: #F5F5F5;
+  --color-text-secondary: #B0B0B0;
+  --color-border: #2A2A2A;
+  --color-success: #34D399;
+  --color-error: #F87171;
+  --color-warning: #FCD34D;
+}
+
 @layer base {
   * {
-    @apply border-gray-200 dark:border-gray-700;
+    border-color: var(--color-border);
   }
   
   body {
-    @apply bg-gradient-to-br from-blue-50 to-primary-100 text-gray-900 font-sans;
-    @apply dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800 dark:text-gray-100;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    @apply font-sans;
     background-attachment: fixed;
     margin: 0;
     min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   
   html {
@@ -22,45 +52,72 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-300 hover:bg-primary-400 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+    background-color: var(--color-primary);
+    color: white;
+    @apply font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+  .btn-primary:hover {
+    opacity: 0.9;
   }
   
   .btn-secondary {
-    @apply bg-secondary-900 hover:bg-secondary-800 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+    background-color: var(--color-accent);
+    color: var(--color-primary);
+    @apply font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+  }
+  .btn-secondary:hover {
+    opacity: 0.9;
   }
   
   .btn-accent {
-    @apply bg-accent-500 hover:bg-accent-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+    background-color: var(--color-accent);
+    color: var(--color-primary);
+    @apply font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+  .btn-accent:hover {
+    opacity: 0.9;
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300;
-    @apply dark:bg-gray-800 dark:border-gray-700 dark:shadow-gray-900/20;
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    @apply rounded-xl shadow-lg p-6 border hover:shadow-xl transition-shadow duration-300;
   }
   
   .input-field {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all duration-200 bg-white;
-    @apply dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-primary-400;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+    @apply w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all duration-200;
+  }
+  .input-field:focus {
+    --tw-ring-color: var(--color-accent);
   }
   
   .gradient-bg {
-    @apply bg-gradient-to-br from-primary-300 via-primary-400 to-secondary-900;
-    @apply dark:bg-gradient-to-br dark:from-gray-800 dark:via-gray-900 dark:to-black;
+    background: linear-gradient(to bottom right, var(--color-primary), var(--color-primary), var(--color-accent));
   }
   
   .glass-effect {
-    @apply bg-white/80 backdrop-blur-sm border border-white/20;
-    @apply dark:bg-gray-800/80 dark:border-gray-600/20;
+    background-color: var(--color-surface);
+    opacity: 0.8;
+    @apply backdrop-blur-sm border;
   }
   
   .sidebar-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-primary-100 cursor-pointer;
-    @apply dark:hover:bg-gray-700/50 dark:text-gray-200;
+    color: var(--color-text);
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer;
+  }
+  .sidebar-item:hover {
+    background-color: rgba(252, 205, 2, 0.1);
   }
   
   .sidebar-item.active {
-    @apply bg-primary-300 text-white hover:bg-primary-400;
-    @apply dark:bg-primary-600 dark:hover:bg-primary-700;
+    background-color: var(--color-accent);
+    color: var(--color-primary);
+  }
+  .sidebar-item.active:hover {
+    opacity: 0.9;
   }
 }
 

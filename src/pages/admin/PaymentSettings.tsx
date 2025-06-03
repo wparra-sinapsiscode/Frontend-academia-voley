@@ -80,7 +80,7 @@ const PaymentSettings: React.FC = () => {
         </div>
         <button
           onClick={() => setShowAddForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
         >
           <FiPlus size={16} />
           <span>Nuevo Tipo</span>
@@ -89,7 +89,7 @@ const PaymentSettings: React.FC = () => {
 
       {/* Add Modal */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -103,7 +103,7 @@ const PaymentSettings: React.FC = () => {
                   type="text"
                   value={newTypeName}
                   onChange={(e) => setNewTypeName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="Ej. Uniforme"
                   autoFocus
                 />
@@ -126,7 +126,7 @@ const PaymentSettings: React.FC = () => {
                   setNewTypeName('');
                   setNewTypeDescription('');
                 }}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
               >
                 Cancelar
               </button>
@@ -134,8 +134,8 @@ const PaymentSettings: React.FC = () => {
                 onClick={handleAdd}
                 disabled={!newTypeName.trim()}
                 className={`px-4 py-2 rounded-lg ${
-                  !newTypeName.trim() ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                } text-white`}
+                  !newTypeName.trim() ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'
+                } text-white transition-colors`}
               >
                 Guardar
               </button>
@@ -172,7 +172,7 @@ const PaymentSettings: React.FC = () => {
                       type="text"
                       value={editedName}
                       onChange={(e) => setEditedName(e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2 py-1 border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] rounded focus:ring-2 focus:ring-accent focus:border-accent"
                     />
                   ) : (
                     <div className="text-sm font-medium text-gray-900 dark:text-white">{type.name}</div>
@@ -194,7 +194,7 @@ const PaymentSettings: React.FC = () => {
                   <button
                     onClick={() => toggleActive(type.id, type.active)}
                     className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
-                      type.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      type.active ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-error)]/10 text-[var(--color-error)]'
                     }`}
                   >
                     {type.active ? 'Activo' : 'Inactivo'}
@@ -235,9 +235,9 @@ const PaymentSettings: React.FC = () => {
       </div>
 
       {/* Info Card */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-        <h3 className="text-md font-semibold text-blue-800 dark:text-blue-300 mb-2">Información</h3>
-        <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-400 space-y-1">
+      <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+        <h3 className="text-md font-semibold text-primary mb-2">Información</h3>
+        <ul className="list-disc list-inside text-sm text-primary/80 space-y-1">
           <li>Los tipos de pago activos aparecerán en el formulario de nuevo pago</li>
           <li>Desactivar un tipo no afectará a los pagos existentes con ese tipo</li>
           <li>Eliminar un tipo es permanente y puede afectar a los informes históricos</li>

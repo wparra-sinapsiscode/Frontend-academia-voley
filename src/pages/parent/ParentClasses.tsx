@@ -6,7 +6,6 @@ import {
   FiCalendar, 
   FiClock, 
   FiUser, 
-  FiTarget,
   FiBook,
   FiMapPin,
   FiCheckCircle,
@@ -17,13 +16,8 @@ import {
   FiFilter,
   FiActivity,
   FiTrendingUp,
-  FiAward,
-  FiUsers,
-  FiStar,
   FiChevronLeft,
-  FiChevronRight,
-  FiPlay,
-  FiPause
+  FiChevronRight
 } from 'react-icons/fi';
 
 // Helper function to safely format dates
@@ -77,13 +71,11 @@ const getDayName = (dayNumber: number): string => {
 };
 
 const ParentClasses: React.FC = () => {
-  const { user, students, schedules, trainingPlans, attendances, coaches, categories } = useAppContext();
-  const [selectedTab, setSelectedTab] = useState<'upcoming' | 'plans' | 'attendance' | 'schedule'>('upcoming');
+  const { user, students, attendances, coaches, categories, classPlans, schedules } = useAppContext();
+  const [selectedTab, setSelectedTab] = useState<'upcoming' | 'attendance'>('upcoming');
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week, 1 = next week, etc.
   const [showClassModal, setShowClassModal] = useState(false);
-  const [showPlanModal, setShowPlanModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState<any>(null);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [filterType, setFilterType] = useState<'all' | 'technical' | 'physical' | 'tactical'>('all');
 
   // Find the student associated with this parent
@@ -92,41 +84,83 @@ const ParentClasses: React.FC = () => {
   if (!myStudent) {
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Clases y Planes</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Clases</h1>
         <p className="text-gray-600 dark:text-gray-400">No se encontró información del estudiante asociado.</p>
       </div>
     );
   }
 
-  // Get schedules for this student's category
-  const studentSchedules = schedules.filter(s => s.categoryId === myStudent.categoryId);
   
-  // Get training plans for this student
-  const studentPlans = trainingPlans.filter(p => p.categoryId === myStudent.categoryId);
+  // Get coach for this student - use the coachId from the category
+  const studentCategory = categories.find(c => c.id === myStudent.categoryId);
+  
+  // Buscar el coach usando el coachId de la categoría
+  const studentCoach = coaches.find(c => c.id === studentCategory?.coachId);
+  
+  
   
   // Get attendances for this student
   const studentAttendances = attendances.filter(a => a.studentId === myStudent.id);
-  
-  // Get coach for this student
-  const studentCoach = coaches.find(c => c.id === myStudent.coachId || c.assignedCategories?.includes(myStudent.categoryId));
 
-  // Get classes from mockClassPlans filtered by student category
+  // Get classes from mockClassPlans AND user-created classes filtered by student category and coach
   const upcomingClasses = useMemo(() => {
     if (!myStudent) return [];
     
     // Get student category name
-    const studentCategory = categories.find(c => c.id === myStudent.categoryId);
     const categoryName = studentCategory?.name;
     
     if (!categoryName) return [];
     
-    // Filter mockClassPlans by category
-    const filteredMockClasses = mockClassPlans.filter(classItem => 
-      classItem.category === categoryName
-    );
+    console.log('🔍 ParentClasses - Filtrando clases para:', {
+      studentName: myStudent.name,
+      categoryName: categoryName,
+      studentCoach: studentCoach?.name,
+      studentCoachId: studentCoach?.id,
+      totalClassPlansInContext: classPlans?.length || 0,
+      totalMockClassPlans: mockClassPlans.length
+    });
     
-    // Convert mockClassPlans to the expected format
-    const classes = filteredMockClasses.map((classItem, index) => {
+    // Filter mockClassPlans by category AND coach
+    const filteredMockClasses = mockClassPlans.filter(classItem => {
+      const matchesCategory = classItem.category === categoryName;
+      // Mostrar solo las clases del coach asignado
+      const isFromAssignedCoach = studentCoach ? classItem.coachId === studentCoach.id : false;
+      
+      console.log('🔍 Mock class filter:', {
+        classTitle: classItem.title,
+        classCategory: classItem.category,
+        classCoachId: classItem.coachId,
+        matchesCategory,
+        isFromAssignedCoach,
+        willShow: matchesCategory && isFromAssignedCoach
+      });
+      
+      return matchesCategory && isFromAssignedCoach;
+    });
+    
+    // Also get user-created classes from context that match the category and coach
+    const userCreatedClasses = (classPlans || []).filter(classItem => {
+      const matchesCategory = classItem.category === categoryName;
+      // Mostrar solo las clases del coach asignado
+      const isFromAssignedCoach = studentCoach ? classItem.coachId === studentCoach.id : false;
+      
+      console.log('🔍 User class filter:', {
+        classTitle: classItem.title,
+        classCategory: classItem.category,
+        classCoachId: classItem.coachId,
+        matchesCategory,
+        isFromAssignedCoach,
+        willShow: matchesCategory && isFromAssignedCoach
+      });
+      
+      return matchesCategory && isFromAssignedCoach;
+    });
+    
+    // Combine both mock classes and user-created classes
+    const allRelevantClasses = [...filteredMockClasses, ...userCreatedClasses];
+    
+    // Convert all classes to the expected format
+    const classes = allRelevantClasses.map((classItem, index) => {
       // Find attendance record for this class
       const attendance = studentAttendances.find(a => 
         a.studentId === myStudent.id && 
@@ -139,7 +173,7 @@ const ParentClasses: React.FC = () => {
       // Assign type based on class title/objectives
       let type = 'technical';
       const title = classItem.title.toLowerCase();
-      const objectives = classItem.objectives.join(' ').toLowerCase();
+      const objectives = (classItem.objectives || []).join(' ').toLowerCase();
       
       if (title.includes('físic') || objectives.includes('físic') || title.includes('resistencia') || title.includes('fuerza')) {
         type = 'physical';
@@ -161,18 +195,28 @@ const ParentClasses: React.FC = () => {
         type: type,
         attendance: attendance,
         title: classItem.title,
-        objectives: classItem.objectives,
-        materials: classItem.materials
+        objectives: classItem.objectives || [],
+        materials: classItem.materials || []
       };
     });
     
-    console.log('ParentClasses - mockClassPlans:', mockClassPlans);
-    console.log('ParentClasses - categoryName:', categoryName);
-    console.log('ParentClasses - filteredMockClasses:', filteredMockClasses);
-    console.log('ParentClasses - final classes:', classes);
+    
+    console.log('🔍 ParentClasses - Resultado final:', {
+      totalFilteredMockClasses: filteredMockClasses.length,
+      totalUserCreatedClasses: userCreatedClasses.length,
+      totalCombinedClasses: allRelevantClasses.length,
+      finalClassesCount: classes.length,
+      classesWithDetails: classes.map(c => ({
+        id: c.id,
+        title: c.title,
+        category: c.type,
+        date: c.date,
+        coachName: c.coach?.name
+      }))
+    });
     
     return classes.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [mockClassPlans, myStudent, categories, coaches, studentAttendances, selectedWeek]);
+  }, [mockClassPlans, classPlans, myStudent, categories, coaches, studentAttendances, selectedWeek, studentCoach, studentCategory]);
 
   // Filter classes by type
   const filteredClasses = useMemo(() => {
@@ -243,15 +287,12 @@ const ParentClasses: React.FC = () => {
   };
 
   const exportSchedule = () => {
-    console.log('Exportando horarios para', myStudent.name);
     alert('Funcionalidad de exportación implementada en desarrollo completo');
   };
 
   const tabs = [
     { id: 'upcoming', label: 'Próximas Clases', icon: FiCalendar },
-    { id: 'plans', label: 'Planes de Entrenamiento', icon: FiTarget },
-    { id: 'attendance', label: 'Historial de Asistencia', icon: FiActivity },
-    { id: 'schedule', label: 'Horarios Regulares', icon: FiClock }
+    { id: 'attendance', label: 'Historial de Asistencia', icon: FiActivity }
   ];
 
   return (
@@ -345,10 +386,13 @@ const ParentClasses: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {currentWeek.label}
+                  {currentWeek.label} - Clases Programadas
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {formatDateSafe(currentWeek.start)} - {formatDateSafe(currentWeek.end)}
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Clases de {studentCoach?.name || 'su entrenador'} para {categories.find(c => c.id === myStudent.categoryId)?.name}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -483,94 +527,6 @@ const ParentClasses: React.FC = () => {
         </>
       )}
 
-      {selectedTab === 'plans' && (
-        <div className="space-y-4">
-          {studentPlans.length > 0 ? (
-            studentPlans.map((plan, index) => (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + index * 0.1 }}
-                className="card hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => {
-                  setSelectedPlan(plan);
-                  setShowPlanModal(true);
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                      <FiTarget className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-lg">
-                          {plan.title}
-                        </h4>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">
-                          {plan.description}
-                        </p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        plan.difficulty === 'beginner' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                        plan.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                      }`}>
-                        {plan.difficulty === 'beginner' ? 'Principiante' : 
-                         plan.difficulty === 'intermediate' ? 'Intermedio' : 'Avanzado'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <FiClock className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {plan.duration} min
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FiUser className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {coaches.find(c => c.id === plan.coachId)?.name || 'Sin asignar'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FiBook className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {plan.exercises.length} ejercicios
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FiCalendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {formatDateSafe(plan.createdAt)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="card text-center py-12"
-            >
-              <FiTarget className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                No hay planes asignados
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Los entrenadores aún no han asignado planes de entrenamiento específicos.
-              </p>
-            </motion.div>
-          )}
-        </div>
-      )}
 
       {selectedTab === 'attendance' && (
         <motion.div
@@ -669,109 +625,10 @@ const ParentClasses: React.FC = () => {
         </motion.div>
       )}
 
-      {selectedTab === 'schedule' && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="space-y-6"
-        >
-          {/* Category Info */}
-          <div className="card">
-            <div className="flex items-start gap-6">
-              <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-                <FiUsers className="w-8 h-8 text-primary-600 dark:text-primary-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                  {categories.find(c => c.id === myStudent.categoryId)?.name || 'Sin categoría'}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  {categories.find(c => c.id === myStudent.categoryId)?.description || 'Sin descripción'}
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Edad:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {categories.find(c => c.id === myStudent.categoryId)?.ageRange.min || 0} - {categories.find(c => c.id === myStudent.categoryId)?.ageRange.max || 0} años
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Estudiantes:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {categories.find(c => c.id === myStudent.categoryId)?.currentStudents || 0} / {categories.find(c => c.id === myStudent.categoryId)?.maxStudents || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Mensualidad:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      S/ {categories.find(c => c.id === myStudent.categoryId)?.monthlyFee || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Entrenador:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {studentCoach?.name || 'Sin asignar'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Regular Schedule */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
-              Horarios Regulares de Entrenamiento
-            </h3>
-            <div className="space-y-4">
-              {studentSchedules.length > 0 ? (
-                studentSchedules.map((schedule, index) => {
-                  const coach = coaches.find(c => c.id === schedule.coachId);
-                  return (
-                    <div key={schedule.id} className="flex items-center gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                        <FiCalendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium text-gray-900 dark:text-white">
-                              {getDayName(schedule.dayOfWeek)}
-                            </h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {schedule.startTime} - {schedule.endTime}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {coach?.name || 'Sin entrenador'}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {schedule.location}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-8">
-                  <FiClock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No hay horarios regulares configurados para esta categoría.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Class Details Modal */}
       {showClassModal && selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -912,120 +769,6 @@ const ParentClasses: React.FC = () => {
         </div>
       )}
 
-      {/* Training Plan Details Modal */}
-      {showPlanModal && selectedPlan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-          >
-            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Plan de Entrenamiento
-              </h3>
-              <button
-                onClick={() => setShowPlanModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    {selectedPlan.title}
-                  </h4>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {selectedPlan.description}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <FiClock className="w-6 h-6 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Duración</p>
-                    <p className="font-semibold text-gray-900 dark:text-white">{selectedPlan.duration} min</p>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <FiAward className="w-6 h-6 text-green-600 dark:text-green-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Dificultad</p>
-                    <p className="font-semibold text-gray-900 dark:text-white capitalize">{selectedPlan.difficulty}</p>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <FiBook className="w-6 h-6 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Ejercicios</p>
-                    <p className="font-semibold text-gray-900 dark:text-white">{selectedPlan.exercises.length}</p>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <FiUser className="w-6 h-6 text-orange-600 dark:text-orange-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Entrenador</p>
-                    <p className="font-semibold text-gray-900 dark:text-white text-xs">
-                      {coaches.find(c => c.id === selectedPlan.coachId)?.name || 'Sin asignar'}
-                    </p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h5 className="font-semibold text-gray-900 dark:text-white mb-3">Objetivos</h5>
-                  <ul className="space-y-2">
-                    {selectedPlan.objectives.map((objective: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <FiTarget className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{objective}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div>
-                  <h5 className="font-semibold text-gray-900 dark:text-white mb-4">Ejercicios del Plan</h5>
-                  <div className="space-y-4">
-                    {selectedPlan.exercises.map((exercise: any, index: number) => (
-                      <div key={exercise.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h6 className="font-medium text-gray-900 dark:text-white">
-                            {index + 1}. {exercise.name}
-                          </h6>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            exercise.difficulty === 'beginner' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                            exercise.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                          }`}>
-                            {exercise.difficulty}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                          {exercise.description}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                          <span>⏱️ {exercise.duration} min</span>
-                          <span>🏷️ {exercise.category}</span>
-                          {exercise.equipment.length > 0 && (
-                            <span>🛠️ {exercise.equipment.join(', ')}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end">
-              <button
-                onClick={() => setShowPlanModal(false)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
-              >
-                Cerrar
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 };

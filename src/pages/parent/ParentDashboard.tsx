@@ -26,7 +26,7 @@ const ParentDashboard: React.FC = () => {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-4">Dashboard Padre/Madre</h1>
-        <p className="text-gray-600 dark:text-gray-400">No se encontró información de la estudiante asociada.</p>
+        <p className="text-[var(--color-text-secondary)]">No se encontró información de la estudiante asociada.</p>
       </div>
     );
   }
@@ -222,11 +222,11 @@ const ParentDashboard: React.FC = () => {
           className="card hover:shadow-xl cursor-pointer group dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-750"
         >
           <div className="text-center">
-            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800/70 transition-colors">
-              <FiHeart className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/30 transition-colors">
+              <FiHeart className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Comunicación</h3>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">Mensajes con entrenadoras</p>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">Comunicación</h3>
+            <p className="text-[var(--color-text-secondary)] text-sm">Mensajes con entrenadoras</p>
           </div>
         </motion.div>
 
@@ -237,11 +237,11 @@ const ParentDashboard: React.FC = () => {
           className="card hover:shadow-xl cursor-pointer group dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-750"
         >
           <div className="text-center">
-            <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-orange-200 dark:group-hover:bg-orange-800/70 transition-colors">
-              <FiCalendar className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+            <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-accent/30 transition-colors">
+              <FiCalendar className="w-8 h-8 text-accent" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Calendario</h3>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">Eventos y recordatorios</p>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">Calendario</h3>
+            <p className="text-[var(--color-text-secondary)] text-sm">Eventos y recordatorios</p>
           </div>
         </motion.div>
       </div>
@@ -255,44 +255,44 @@ const ParentDashboard: React.FC = () => {
           transition={{ delay: 0.8 }}
           className="card dark:bg-gray-800 dark:border-gray-700"
         >
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <FiActivity className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-[var(--color-text)] mb-6 flex items-center gap-2">
+            <FiActivity className="w-5 h-5 text-primary" />
             Resumen de Actividades
           </h3>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/20">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                   <FiCalendar className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">{quickStats.nextEvent}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Próximo entrenamiento</p>
+                  <p className="font-medium text-[var(--color-text)]">{quickStats.nextEvent}</p>
+                  <p className="text-sm text-[var(--color-text-secondary)]">Próximo entrenamiento</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/30">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-success)]/20">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-500 dark:bg-green-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-[var(--color-success)] rounded-full flex items-center justify-center">
                   <FiHeart className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">{quickStats.unreadMessages} mensajes nuevos</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">De las entrenadoras</p>
+                  <p className="font-medium text-[var(--color-text)]">{quickStats.unreadMessages} mensajes nuevos</p>
+                  <p className="text-sm text-[var(--color-text-secondary)]">De las entrenadoras</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-900/30">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-accent/20">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-500 dark:bg-orange-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
                   <FiTarget className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">{quickStats.weeklyChallenge.title}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">{quickStats.weeklyChallenge.progress}/{quickStats.weeklyChallenge.goal} - {quickStats.weeklyChallenge.completionRate}%</p>
+                  <p className="font-medium text-[var(--color-text)]">{quickStats.weeklyChallenge.title}</p>
+                  <p className="text-sm text-[var(--color-text-secondary)]">{quickStats.weeklyChallenge.progress}/{quickStats.weeklyChallenge.goal} - {quickStats.weeklyChallenge.completionRate}%</p>
                 </div>
               </div>
             </div>
@@ -306,28 +306,28 @@ const ParentDashboard: React.FC = () => {
           transition={{ delay: 0.9 }}
           className="card dark:bg-gray-800 dark:border-gray-700"
         >
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <FiStar className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />
+          <h3 className="text-lg font-semibold text-[var(--color-text)] mb-6 flex items-center gap-2">
+            <FiStar className="w-5 h-5 text-accent" />
             Actualizaciones Recientes
           </h3>
           
           <div className="space-y-4">
-            <div className="border-l-4 border-blue-500 dark:border-blue-400 pl-4">
-              <p className="font-medium text-gray-900 dark:text-white">Desafío semanal en progreso</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{dailyDigs} defensas exitosas hoy, {dailySpikes} remates logrados</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Actualizado ahora</p>
+            <div className="border-l-4 border-primary pl-4">
+              <p className="font-medium text-[var(--color-text)]">Desafío semanal en progreso</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">{dailyDigs} defensas exitosas hoy, {dailySpikes} remates logrados</p>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-1">Actualizado ahora</p>
             </div>
 
-            <div className="border-l-4 border-green-500 dark:border-green-400 pl-4">
-              <p className="font-medium text-gray-900 dark:text-white">Progreso técnico</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">+{myStudent.stats?.improvement || 0} puntos de mejora este mes</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Última evaluación</p>
+            <div className="border-l-4 border-[var(--color-success)] pl-4">
+              <p className="font-medium text-[var(--color-text)]">Progreso técnico</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">+{myStudent.stats?.improvement || 0} puntos de mejora este mes</p>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-1">Última evaluación</p>
             </div>
 
-            <div className="border-l-4 border-purple-500 dark:border-purple-400 pl-4">
-              <p className="font-medium text-gray-900 dark:text-white">Asistencia excelente</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{myStudent.stats?.attendanceRate || 0}% de asistencia general</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Estadística actual</p>
+            <div className="border-l-4 border-primary pl-4">
+              <p className="font-medium text-[var(--color-text)]">Asistencia excelente</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">{myStudent.stats?.attendanceRate || 0}% de asistencia general</p>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-1">Estadística actual</p>
             </div>
           </div>
         </motion.div>
@@ -340,37 +340,37 @@ const ParentDashboard: React.FC = () => {
         transition={{ delay: 1.0 }}
         className="card dark:bg-gray-800 dark:border-gray-700"
       >
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información de Contacto</h3>
+        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Información de Contacto</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <FiUser className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <FiUser className="w-5 h-5 text-[var(--color-text-secondary)]" />
               <div>
-                <p className="font-medium dark:text-white">Entrenadora Asignada</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Sofía Martínez - {studentCategory?.name || 'Sin categoría'}</p>
+                <p className="font-medium text-[var(--color-text)]">Entrenadora Asignada</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">Sofía Martínez - {studentCategory?.name || 'Sin categoría'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <FiCalendar className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <FiCalendar className="w-5 h-5 text-[var(--color-text-secondary)]" />
               <div>
-                <p className="font-medium dark:text-white">Horarios de Entrenamiento</p>
+                <p className="font-medium text-[var(--color-text)]">Horarios de Entrenamiento</p>
                
               </div>
             </div>
           </div>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <FiMapPin className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <FiMapPin className="w-5 h-5 text-[var(--color-text-secondary)]" />
               <div>
-                <p className="font-medium dark:text-white">Ubicación</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Academia de Voleibol SportCenter</p>
+                <p className="font-medium text-[var(--color-text)]">Ubicación</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">Academia de Voleibol SportCenter</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <FiHeart className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <FiHeart className="w-5 h-5 text-[var(--color-text-secondary)]" />
               <div>
-                <p className="font-medium dark:text-white">Estado General</p>
-                <p className="text-sm text-green-600 font-medium">Excelente progreso</p>
+                <p className="font-medium text-[var(--color-text)]">Estado General</p>
+                <p className="text-sm text-[var(--color-success)] font-medium">Excelente progreso</p>
               </div>
             </div>
           </div>

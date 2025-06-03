@@ -42,10 +42,6 @@ const StudentEvaluations: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedLogDetail, setSelectedLogDetail] = useState<any>(null);
 
-  // Debug useEffect para ver cambios en challengeParameters
-  useEffect(() => {
-    console.log('challengeParameters actualizados:', challengeParameters);
-  }, [challengeParameters]);
 
   // Obtener campos activos por categoría
   const technicalFields = evaluationFields.filter(f => f.category === 'technical' && f.active);
@@ -162,7 +158,7 @@ const StudentEvaluations: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
         onClick={() => setShowEvaluationModal(false)}
       >
         <motion.div
@@ -363,10 +359,6 @@ const StudentEvaluations: React.FC = () => {
       description: editingLog?.description || ''
     });
     
-    // Debug
-    console.log('Todos los parámetros:', challengeParameters);
-    console.log('Parámetros activos:', challengeParameters.filter(p => p.active !== false));
-    console.log('Longitud de parámetros:', challengeParameters.length);
 
     // Find the selected parameter to determine value type
     const selectedParameter = challengeParameters.find(p => p.id === logFormData.parameter);
@@ -435,7 +427,7 @@ const StudentEvaluations: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
         onClick={handleClose}
       >
         <motion.div
@@ -1003,7 +995,7 @@ const StudentEvaluations: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
           onClick={() => setSelectedEvaluation(null)}
         >
           <motion.div
@@ -1121,7 +1113,7 @@ const StudentEvaluations: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
               onClick={() => setSelectedLogDetail(null)}
             >
               <motion.div
@@ -1231,7 +1223,7 @@ const StudentEvaluations: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
             onClick={() => setShowDeleteConfirm(null)}
           >
             <motion.div

@@ -270,28 +270,6 @@ const ParentCalendar: React.FC = () => {
         </div>
       </div>
 
-      {/* Important Events Alert */}
-      {upcomingImportantEvents.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="card bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-700"
-        >
-          <div className="flex items-start gap-3">
-            <FiBell className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-1" />
-            <div>
-              <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-2">⚠️ Eventos Importantes Próximos</h3>
-              <div className="space-y-2">
-                {upcomingImportantEvents.slice(0, 3).map(event => (
-                  <div key={event.id} className="text-sm text-orange-700 dark:text-orange-300">
-                    <span className="font-medium">{event.title}</span> - {new Date(event.date).toLocaleDateString('es-ES')} a las {event.time}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
@@ -612,7 +590,7 @@ const ParentCalendar: React.FC = () => {
 
       {/* Create Reminder Modal */}
       {showReminderModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/70 flex items-center justify-center p-4 z-[9999]">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}

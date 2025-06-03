@@ -15,6 +15,7 @@ import Announcements from '../../pages/admin/Announcements';
 import PaymentSettings from '../../pages/admin/PaymentSettings';
 import ExpenseSettings from '../../pages/admin/ExpenseSettings';
 import FinanceSettings from '../../pages/admin/FinanceSettings';
+import CoachSpecializations from '../../pages/admin/CoachSpecializations';
 
 // Coach Components
 import CoachDashboard from '../../pages/coach/CoachDashboard';
@@ -26,7 +27,6 @@ import ChallengeParameters from '../../pages/coach/ChallengeParameters';
 import EvaluationFields from '../../pages/coach/EvaluationFields';
 
 // Student Components
-import StudentDashboard from '../../pages/student/StudentDashboard';
 import StudentProgress from '../../pages/student/StudentProgress';
 import StudentChallenges from '../../pages/student/StudentChallenges';
 
@@ -84,6 +84,17 @@ const AppRouter: React.FC = () => {
             <ProtectedRoute roles={['admin']}>
               <MainLayout>
                 <Coaches />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/admin/coach-specializations"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <MainLayout>
+                <CoachSpecializations />
               </MainLayout>
             </ProtectedRoute>
           }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '../../contexts/AppContext';
+import { addNewStudent } from '../../data/mockData';
 import { 
   FiUsers, 
   FiPlus, 
@@ -14,15 +15,37 @@ import {
   FiCalendar,
   FiMapPin,
   FiUser,
-  FiX
+  FiX,
+  FiKey
 } from 'react-icons/fi';
 
 const Students: React.FC = () => {
-  const { students, categories, coaches, addStudent, updateStudent, deleteStudent } = useAppContext();
+  const { students, categories, users, addStudent, updateStudent, deleteStudent, coaches: contextCoaches } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar solo usuarios con rol de coach
+  const coaches = users.filter(user => user.role === 'coach');
+  
+  
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [showViewCredentialsModal, setShowViewCredentialsModal] = useState(false);
+  const [selectedStudentCredentials, setSelectedStudentCredentials] = useState({
+    studentName: '',
+    studentEmail: '',
+    studentPassword: '',
+    parentName: '',
+    parentEmail: '',
+    parentPassword: ''
+  });
+  const [generatedCredentials, setGeneratedCredentials] = useState({
+    studentEmail: '',
+    studentPassword: '',
+    parentEmail: '',
+    parentPassword: ''
+  });
 
   // Filter students
   const filteredStudents = students.filter(student => {
@@ -35,31 +58,41 @@ const Students: React.FC = () => {
   // New student form data
   const [formData, setFormData] = useState({
     name: '',
+    email: '',
+    password: '',
     categoryId: '',
     parentName: '',
     parentPhone: '',
     parentEmail: '',
+    parentPassword: '',
     emergencyContact: '',
     emergencyPhone: '',
     medicalInfo: '',
     address: '',
     birthDate: '',
-    coachId: ''
+    coachId: '',
+    position: '',
+    jerseyNumber: ''
   });
 
   const resetForm = () => {
     setFormData({
       name: '',
+      email: '',
+      password: '',
       categoryId: '',
       parentName: '',
       parentPhone: '',
       parentEmail: '',
+      parentPassword: '',
       emergencyContact: '',
       emergencyPhone: '',
       medicalInfo: '',
       address: '',
       birthDate: '',
-      coachId: ''
+      coachId: '',
+      position: '',
+      jerseyNumber: ''
     });
   };
   
@@ -83,56 +116,150 @@ const Students: React.FC = () => {
     const selectedCategory = categories.find(c => c.id === formData.categoryId);
     if (!selectedCategory) return;
 
-    const studentData = {
-      name: formData.name,
-      age: calculateAge(formData.birthDate),
-      category: selectedCategory,
-      parentName: formData.parentName,
-      parentPhone: formData.parentPhone,
-      parentEmail: formData.parentEmail,
-      emergencyContact: formData.emergencyContact,
-      emergencyPhone: formData.emergencyPhone,
-      medicalInfo: formData.medicalInfo,
-      address: formData.address,
-      birthDate: new Date(formData.birthDate),
-      enrollmentDate: new Date(),
-      coachId: formData.coachId || undefined,
-      achievements: [],
-      stats: {
-        attendanceRate: 100,
-        skillLevel: 5.0,
-        improvement: 0,
-        totalSessions: 0,
-        averagePerformance: 5.0
-      },
-      paymentStatus: 'pending' as const
-    };
-
     if (editingStudent) {
+      // Solo actualizar, no crear nuevos usuarios
+      const studentData = {
+        name: formData.name,
+        age: calculateAge(formData.birthDate),
+        category: selectedCategory,
+        parentName: formData.parentName,
+        parentPhone: formData.parentPhone,
+        parentEmail: formData.parentEmail,
+        emergencyContact: formData.emergencyContact,
+        emergencyPhone: formData.emergencyPhone,
+        medicalInfo: formData.medicalInfo,
+        address: formData.address,
+        birthDate: new Date(formData.birthDate),
+        enrollmentDate: new Date(),
+        coachId: formData.coachId || undefined,
+        achievements: [],
+        stats: {
+          attendanceRate: 100,
+          skillLevel: 5.0,
+          improvement: 0,
+          totalSessions: 0,
+          averagePerformance: 5.0
+        },
+        paymentStatus: 'pending' as const
+      };
       updateStudent(editingStudent.id, studentData);
       setEditingStudent(null);
     } else {
+      // Generar credenciales automáticas si no se proporcionan
+      const studentEmail = formData.email || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@email.com`;
+      const studentPassword = formData.password || 'Student123';
+      const parentEmail = formData.parentEmail || `${formData.parentName.toLowerCase().replace(/\s+/g, '.')}@email.com`;
+      const parentPassword = formData.parentPassword || 'Parent123';
+      
+      // Crear nuevo estudiante con usuarios
+      const result = addNewStudent({
+        studentName: formData.name,
+        studentEmail: studentEmail,
+        studentPassword: studentPassword,
+        parentName: formData.parentName,
+        parentEmail: parentEmail,
+        parentPassword: parentPassword,
+        categoryId: formData.categoryId,
+        dateOfBirth: new Date(formData.birthDate),
+        medicalInfo: formData.medicalInfo,
+        position: formData.position || undefined,
+        jerseyNumber: formData.jerseyNumber ? parseInt(formData.jerseyNumber) : undefined
+      });
+
+      // Crear el objeto student para el contexto
+      const studentData = {
+        id: result.student.id,
+        name: formData.name,
+        age: calculateAge(formData.birthDate),
+        category: selectedCategory,
+        parentName: formData.parentName,
+        parentPhone: formData.parentPhone,
+        parentEmail: formData.parentEmail,
+        emergencyContact: formData.emergencyContact,
+        emergencyPhone: formData.emergencyPhone,
+        medicalInfo: formData.medicalInfo,
+        address: formData.address,
+        birthDate: new Date(formData.birthDate),
+        enrollmentDate: new Date(),
+        coachId: formData.coachId || undefined,
+        achievements: [],
+        stats: {
+          attendanceRate: 100,
+          skillLevel: 5.0,
+          improvement: 0,
+          totalSessions: 0,
+          averagePerformance: 5.0
+        },
+        paymentStatus: 'pending' as const
+      };
+
       addStudent(studentData);
+      
+      // Guardar credenciales para mostrar en modal
+      setGeneratedCredentials({
+        studentEmail,
+        studentPassword,
+        parentEmail,
+        parentPassword
+      });
+      setShowCredentialsModal(true);
     }
 
     resetForm();
     setShowAddModal(false);
   };
 
+  const handleViewCredentials = (student: any) => {
+    // Buscar el registro del estudiante en mockStudents para obtener las relaciones correctas
+    const studentRecord = students.find(s => s.id === student.id);
+    
+    if (studentRecord) {
+      // Buscar credenciales usando los IDs correctos
+      const studentUser = users.find(u => u.id === studentRecord.userId || u.id === studentRecord.id);
+      const parentUser = users.find(u => u.id === studentRecord.parentId);
+      
+      setSelectedStudentCredentials({
+        studentName: student.name,
+        studentEmail: studentUser?.email || 'No disponible',
+        studentPassword: studentUser?.password || 'No disponible',
+        parentName: parentUser?.name || student.parentName,
+        parentEmail: parentUser?.email || 'No disponible',
+        parentPassword: parentUser?.password || 'No disponible'
+      });
+    } else {
+      // Fallback para estudiantes que no están en el registro
+      setSelectedStudentCredentials({
+        studentName: student.name,
+        studentEmail: 'No disponible',
+        studentPassword: 'No disponible',
+        parentName: student.parentName || 'No disponible',
+        parentEmail: 'No disponible',
+        parentPassword: 'No disponible'
+      });
+    }
+    
+    setShowViewCredentialsModal(true);
+  };
+
   const handleEdit = (student: any) => {
     setEditingStudent(student);
     setFormData({
       name: student.name,
+      email: '',
+      password: '',
       categoryId: student.category.id,
       parentName: student.parentName,
       parentPhone: student.parentPhone,
       parentEmail: student.parentEmail,
+      parentPassword: '',
       emergencyContact: student.emergencyContact,
       emergencyPhone: student.emergencyPhone,
       medicalInfo: student.medicalInfo,
       address: student.address,
       birthDate: student.birthDate.toISOString().split('T')[0],
-      coachId: student.coachId || ''
+      coachId: student.coachId || '',
+      position: '',
+      jerseyNumber: ''
     });
     setShowAddModal(true);
   };
@@ -178,9 +305,9 @@ const Students: React.FC = () => {
 
   const getPaymentStatusBadge = (status: string) => {
     const styles = {
-      paid: 'bg-green-100 text-green-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      overdue: 'bg-red-100 text-red-800'
+      paid: 'bg-[var(--color-success)]/10 text-[var(--color-success)]',
+      pending: 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]',
+      overdue: 'bg-[var(--color-error)]/10 text-[var(--color-error)]'
     };
     
     const labels = {
@@ -207,14 +334,14 @@ const Students: React.FC = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowAddModal(true)}
-            className="btn-primary flex items-center"
+            className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center"
           >
             <FiPlus className="w-4 h-4 mr-2" />
             Nueva Estudiante
           </button>
           <button 
             onClick={exportStudents}
-            className="btn-secondary flex items-center"
+            className="bg-accent hover:bg-accent/90 text-primary font-medium py-2 px-4 rounded-lg transition-colors flex items-center"
           >
             <FiDownload className="w-4 h-4 mr-2" />
             Exportar
@@ -234,8 +361,8 @@ const Students: React.FC = () => {
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Estudiantes</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{students.length}</p>
             </div>
-            <div className="p-3 rounded-full bg-blue-100">
-              <FiUsers className="w-6 h-6 text-blue-600" />
+            <div className="p-3 rounded-full bg-primary/10">
+              <FiUsers className="w-6 h-6 text-primary" />
             </div>
           </div>
         </motion.div>
@@ -249,10 +376,10 @@ const Students: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Nuevas este mes</p>
-              <p className="text-2xl font-bold text-green-600">8</p>
+              <p className="text-2xl font-bold text-[var(--color-success)]">8</p>
             </div>
-            <div className="p-3 rounded-full bg-green-100">
-              <FiPlus className="w-6 h-6 text-green-600" />
+            <div className="p-3 rounded-full bg-[var(--color-success)]/10">
+              <FiPlus className="w-6 h-6 text-[var(--color-success)]" />
             </div>
           </div>
         </motion.div>
@@ -266,12 +393,12 @@ const Students: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pagos al día</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-primary">
                 {students.filter(s => s.paymentStatus === 'paid').length}
               </p>
             </div>
-            <div className="p-3 rounded-full bg-blue-100">
-              <FiUser className="w-6 h-6 text-blue-600" />
+            <div className="p-3 rounded-full bg-primary/10">
+              <FiUser className="w-6 h-6 text-primary" />
             </div>
           </div>
         </motion.div>
@@ -285,12 +412,12 @@ const Students: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pagos pendientes</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-2xl font-bold text-[var(--color-error)]">
                 {students.filter(s => s.paymentStatus !== 'paid').length}
               </p>
             </div>
-            <div className="p-3 rounded-full bg-red-100">
-              <FiCalendar className="w-6 h-6 text-red-600" />
+            <div className="p-3 rounded-full bg-[var(--color-error)]/10">
+              <FiCalendar className="w-6 h-6 text-[var(--color-error)]" />
             </div>
           </div>
         </motion.div>
@@ -311,7 +438,7 @@ const Students: React.FC = () => {
               placeholder="Buscar por nombre de estudiante o padre..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+              className="input-field bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] placeholder-gray-400 dark:placeholder-gray-500 focus:ring-accent focus:border-accent"
             />
           </div>
           
@@ -320,7 +447,7 @@ const Students: React.FC = () => {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input-field w-auto dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              className="input-field w-auto bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] focus:ring-accent focus:border-accent"
             >
               <option value="">Todas las categorías</option>
               {categories.map(category => (
@@ -349,9 +476,6 @@ const Students: React.FC = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Categoría
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Padre/Madre
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Estado Pago
@@ -383,13 +507,9 @@ const Students: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      <span className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
                         {student.category?.name || 'Sin categoría'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-gray-100">{student.parentName}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{student.parentPhone}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getPaymentStatusBadge(student.paymentStatus)}
@@ -399,6 +519,13 @@ const Students: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleViewCredentials(student)}
+                          className="text-yellow-600 hover:text-yellow-900"
+                          title="Ver credenciales"
+                        >
+                          <FiKey className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleEdit(student)}
                           className="text-blue-600 hover:text-blue-900"
@@ -441,7 +568,7 @@ const Students: React.FC = () => {
 
       {/* Add/Edit Student Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -475,9 +602,39 @@ const Students: React.FC = () => {
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] focus:ring-accent focus:border-accent"
                     />
                   </div>
+
+                  {!editingStudent && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Email del estudiante
+                        </label>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({...formData, email: e.target.value})}
+                          className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                          placeholder="Se generará automáticamente si se deja vacío"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Contraseña del estudiante
+                        </label>
+                        <input
+                          type="password"
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                          placeholder="Por defecto: student123"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -535,15 +692,11 @@ const Students: React.FC = () => {
                       className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                     >
                       <option value="">Sin asignar</option>
-                      {coaches.map(coach => {
-                        const selectedCategory = categories.find(c => c.id === formData.categoryId);
-                        const isRecommended = selectedCategory?.coachId === coach.id;
-                        return (
-                          <option key={coach.id} value={coach.id}>
-                            {coach.name} {isRecommended && '(Recomendado)'}
-                          </option>
-                        );
-                      })}
+                      {coaches.map(coach => (
+                        <option key={coach.id} value={coach.id}>
+                          {coach.name}
+                        </option>
+                      ))}
                     </select>
                     {formData.categoryId && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -605,6 +758,21 @@ const Students: React.FC = () => {
                     />
                   </div>
 
+                  {!editingStudent && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Contraseña del padre/madre
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.parentPassword}
+                        onChange={(e) => setFormData({...formData, parentPassword: e.target.value})}
+                        className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                        placeholder="Por defecto: parent123"
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Teléfono de emergencia
@@ -617,6 +785,43 @@ const Students: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                {!editingStudent && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Posición (Voleibol)
+                      </label>
+                      <select
+                        value={formData.position}
+                        onChange={(e) => setFormData({...formData, position: e.target.value})}
+                        className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      >
+                        <option value="">Seleccionar posición</option>
+                        <option value="Colocador">Colocador</option>
+                        <option value="Opuesto">Opuesto</option>
+                        <option value="Central">Central</option>
+                        <option value="Atacante">Atacante</option>
+                        <option value="Líbero">Líbero</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Número de camiseta
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={formData.jerseyNumber}
+                        onChange={(e) => setFormData({...formData, jerseyNumber: e.target.value})}
+                        className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                        placeholder="1-99"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -638,7 +843,7 @@ const Students: React.FC = () => {
                     rows={3}
                     value={formData.medicalInfo}
                     onChange={(e) => setFormData({...formData, medicalInfo: e.target.value})}
-                    className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                    className="input-field bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] placeholder-gray-400 dark:placeholder-gray-500 focus:ring-accent focus:border-accent"
                     placeholder="Alergias, condiciones médicas, medicamentos..."
                   />
                 </div>
@@ -651,16 +856,195 @@ const Students: React.FC = () => {
                       setEditingStudent(null);
                       resetForm();
                     }}
-                    className="bg-gray-600 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-lg transition-colors flex-1"
+                    className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors flex-1"
                   >
                     Cancelar
                   </button>
-                  <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex-1">
+                  <button type="submit" className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex-1">
                     {editingStudent ? 'Actualizar' : 'Crear'} Estudiante
                   </button>
                 </div>
               </form>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal de Credenciales */}
+      {showCredentialsModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4"
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiUser className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                ¡Estudiante agregado exitosamente!
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Aquí están las credenciales de acceso generadas:
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Credenciales del Estudiante */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2 flex items-center">
+                  📚 Credenciales del Estudiante
+                </h4>
+                <div className="text-sm space-y-1">
+                  <div className="flex items-center">
+                    <span className="text-gray-600 dark:text-gray-400 w-16">Email:</span>
+                    <span className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                      {generatedCredentials.studentEmail}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-gray-600 dark:text-gray-400 w-16">Clave:</span>
+                    <span className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                      {generatedCredentials.studentPassword}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Credenciales del Padre */}
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                <h4 className="font-medium text-green-900 dark:text-green-100 mb-2 flex items-center">
+                  👨‍👩‍👧‍👦 Credenciales del Padre/Madre
+                </h4>
+                <div className="text-sm space-y-1">
+                  <div className="flex items-center">
+                    <span className="text-gray-600 dark:text-gray-400 w-16">Email:</span>
+                    <span className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                      {generatedCredentials.parentEmail}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-gray-600 dark:text-gray-400 w-16">Clave:</span>
+                    <span className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 px-2 py-1 rounded text-xs">
+                      {generatedCredentials.parentPassword}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <p className="text-xs text-yellow-700 dark:text-yellow-300 text-center">
+                ⚠️ Guarda estas credenciales y compártelas con la familia
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setShowCredentialsModal(false)}
+                className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal para Ver Credenciales */}
+      {showViewCredentialsModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 mx-4"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Credenciales de Acceso
+              </h3>
+              <button
+                onClick={() => setShowViewCredentialsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="text-center mb-4">
+                <FiKey className="w-12 h-12 text-purple-600 mx-auto mb-2" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Credenciales para <span className="font-semibold">{selectedStudentCredentials.studentName}</span>
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email de acceso
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                      type="text"
+                      value={selectedStudentCredentials.parentEmail}
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedStudentCredentials.parentEmail);
+                      }}
+                      className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900 rounded-lg transition-colors"
+                    >
+                      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Contraseña
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                      type="password"
+                      value={selectedStudentCredentials.parentPassword}
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedStudentCredentials.parentPassword);
+                      }}
+                      className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900 rounded-lg transition-colors"
+                    >
+                      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mt-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                ⚠️ Mantenga estas credenciales seguras y compártalas solo con el padre/madre correspondiente.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowViewCredentialsModal(false)}
+              className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors mt-4"
+            >
+              Cerrar
+            </button>
           </motion.div>
         </div>
       )}

@@ -132,8 +132,9 @@ export interface Announcement {
   author: string;
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';
-  targetAudience: 'all' | 'students' | 'parents' | 'coaches';
+  targetAudience: ('all' | 'students' | 'parents' | 'coaches')[];
   pinned: boolean;
+  expiryDate?: Date;
 }
 
 export interface TrainingPlan {
