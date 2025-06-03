@@ -17,8 +17,12 @@ interface Category {
   name: string;
   description: string;
   ageRange: { min: number; max: number };
-  schedule: string;
+  maxStudents: number;
+  currentStudents: number;
+  price: number;
   monthlyFee: number;
+  schedule: string[];
+  coachId: string;
 }
 
 interface Student {
@@ -34,16 +38,6 @@ interface Student {
   jerseyNumber?: number;
 }
 
-interface Coach {
-  id: string;
-  userId: string;
-  specialization: string;
-  experience: number;
-  certification: string;
-  categories: string[];
-  achievements: string[];
-  availability: { [key: string]: string[] };
-}
 
 interface Schedule {
   id: string;
@@ -59,14 +53,23 @@ interface Schedule {
 interface Payment {
   id: string;
   studentId: string;
+  studentName?: string;
   amount: number;
-  concept: string;
-  date: Date;
-  status: 'pending' | 'completed' | 'overdue';
+  concept?: string;
+  type?: string;
+  typeName?: string;
+  date: string;
+  datetime?: string;
+  status: 'pending' | 'completed' | 'overdue' | 'paid';
   method?: 'cash' | 'card' | 'transfer';
   receiptNumber?: string;
   receiptUrl?: string;
-  dueDate?: Date;
+  dueDate?: string;
+  description?: string;
+  approved?: boolean;
+  approvedBy?: string;
+  approvedDate?: string;
+  category?: string;
   notes?: string;
   pendingApproval?: boolean;
 }
@@ -2239,3 +2242,4 @@ export function addNewCoach(coachData: {
   
   return { coachUser: newCoachUser, coach: newCoach };
 }
+
