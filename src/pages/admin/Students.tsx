@@ -16,11 +16,16 @@ import {
   FiMapPin,
   FiUser,
   FiX,
-  FiKey
+  FiKey,
+  FiCheckCircle,
+  FiCheck,
+  FiCopy,
+  FiEye,
+  FiEyeOff
 } from 'react-icons/fi';
 
 const Students: React.FC = () => {
-  const { students, categories, users, addStudent, updateStudent, deleteStudent, coaches: contextCoaches } = useAppContext();
+  const { students, categories, users, addStudent, updateStudent, deleteStudent, coaches: contextCoaches, addUser } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Filtrar solo usuarios con rol de coach
@@ -46,6 +51,14 @@ const Students: React.FC = () => {
     parentEmail: '',
     parentPassword: ''
   });
+  
+  // Estados para los modales de credenciales
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [newParentCredentials, setNewParentCredentials] = useState<{name: string, email: string, password: string} | null>(null);
+  const [selectedParentCredentials, setSelectedParentCredentials] = useState<{name: string, email: string, password: string} | null>(null);
 
   // Filter students
   const filteredStudents = students.filter(student => {
@@ -109,6 +122,60 @@ const Students: React.FC = () => {
     
     return age;
   };
+  
+  // Generate secure password
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    let password = 'Parent';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+  
+  // Copy text to clipboard
+  const copyText = (text: string, type: 'email' | 'password') => {
+    navigator.clipboard.writeText(text);
+    if (type === 'email') {
+      setCopiedEmail(true);
+      setTimeout(() => setCopiedEmail(false), 2000);
+    } else {
+      setCopiedPassword(true);
+      setTimeout(() => setCopiedPassword(false), 2000);
+    }
+  };
+  
+  // Show credentials for existing parent
+  const showParentCredentials = (student: any) => {
+    console.log('Student data:', student);
+    console.log('Looking for parent with ID:', student.parentId);
+    
+    // Buscar el usuario padre asociado al estudiante por parentId
+    const parent = users.find(u => u.id === student.parentId && u.role === 'parent');
+    console.log('Found parent:', parent);
+    
+    if (parent) {
+      setSelectedParentCredentials({
+        name: parent.name,
+        email: parent.email,
+        password: parent.password || 'No disponible'
+      });
+      setShowViewCredentialsModal(true);
+    } else {
+      // Si no encuentra por parentId, intentar por email
+      const parentByEmail = users.find(u => u.email === student.parentEmail && u.role === 'parent');
+      if (parentByEmail) {
+        setSelectedParentCredentials({
+          name: parentByEmail.name,
+          email: parentByEmail.email,
+          password: parentByEmail.password || 'No disponible'
+        });
+        setShowViewCredentialsModal(true);
+      } else {
+        alert('No se encontraron las credenciales del padre/madre');
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,42 +212,52 @@ const Students: React.FC = () => {
       updateStudent(editingStudent.id, studentData);
       setEditingStudent(null);
     } else {
-      // Generar credenciales automáticas si no se proporcionan
-      const studentEmail = formData.email || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@email.com`;
-      const studentPassword = formData.password || 'Student123';
-      const parentEmail = formData.parentEmail || `${formData.parentName.toLowerCase().replace(/\s+/g, '.')}@email.com`;
-      const parentPassword = formData.parentPassword || 'Parent123';
+      // Generar IDs únicos basados en el próximo número disponible
+      const nextStudentNumber = Math.max(...students.map(s => {
+        const match = s.id.match(/student(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      }), ...users.filter(u => u.role === 'student').map(u => {
+        const match = u.id.match(/student(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      })) + 1;
       
-      // Crear nuevo estudiante con usuarios
-      const result = addNewStudent({
-        studentName: formData.name,
-        studentEmail: studentEmail,
-        studentPassword: studentPassword,
-        parentName: formData.parentName,
-        parentEmail: parentEmail,
-        parentPassword: parentPassword,
-        categoryId: formData.categoryId,
-        dateOfBirth: new Date(formData.birthDate),
-        medicalInfo: formData.medicalInfo,
-        position: formData.position || undefined,
-        jerseyNumber: formData.jerseyNumber ? parseInt(formData.jerseyNumber) : undefined
-      });
-
-      // Crear el objeto student para el contexto
+      const nextParentNumber = Math.max(...users.filter(u => u.role === 'parent').map(u => {
+        const match = u.id.match(/parent(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      })) + 1;
+      
+      const studentId = `student${nextStudentNumber}`;
+      const parentId = `parent${nextParentNumber}`;
+      
+      // Generar credenciales automáticas para el padre
+      const parentEmail = formData.parentEmail;
+      const parentPassword = generatePassword();
+      
+      // Generar credenciales automáticas para el estudiante
+      const studentEmail = formData.email || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@email.com`;
+      const studentPassword = `Student${Math.random().toString(36).substring(2, 10)}`;
+      
+      // Crear el objeto student siguiendo la estructura de mockData
       const studentData = {
-        id: result.student.id,
+        id: studentId,
+        userId: studentId, // Los estudiantes en mockData tienen userId
+        parentId: parentId, // Apunta al ID del padre
+        categoryId: formData.categoryId,
+        dateOfBirth: new Date(formData.birthDate), // En mockData se llama dateOfBirth
+        medicalInfo: formData.medicalInfo || 'Sin condiciones médicas',
+        enrollmentDate: new Date(),
+        active: true,
+        // Datos adicionales para compatibilidad con el sistema
         name: formData.name,
         age: calculateAge(formData.birthDate),
         category: selectedCategory,
         parentName: formData.parentName,
-        parentPhone: formData.parentPhone,
-        parentEmail: formData.parentEmail,
-        emergencyContact: formData.emergencyContact,
-        emergencyPhone: formData.emergencyPhone,
-        medicalInfo: formData.medicalInfo,
+        parentPhone: formData.parentPhone || '',
+        parentEmail: parentEmail,
+        emergencyContact: formData.emergencyContact || formData.parentName,
+        emergencyPhone: formData.emergencyPhone || formData.parentPhone || '',
         address: formData.address,
         birthDate: new Date(formData.birthDate),
-        enrollmentDate: new Date(),
         coachId: formData.coachId || undefined,
         achievements: [],
         stats: {
@@ -192,17 +269,51 @@ const Students: React.FC = () => {
         },
         paymentStatus: 'pending' as const
       };
-
-      addStudent(studentData);
       
-      // Guardar credenciales para mostrar en modal
+      // Crear usuario estudiante
+      const studentUser = {
+        id: studentId,
+        email: studentEmail,
+        password: studentPassword,
+        name: formData.name,
+        role: 'student' as const,
+        profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
+        active: true,
+        createdAt: new Date(),
+        lastLogin: undefined
+      };
+      
+      // Crear usuario padre con todos los campos necesarios
+      const parentUser = {
+        id: parentId,
+        email: parentEmail,
+        password: parentPassword,
+        name: formData.parentName,
+        role: 'parent' as const,
+        profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
+        active: true,
+        createdAt: new Date(),
+        lastLogin: undefined
+      };
+      
+      // Agregar todos al contexto
+      addStudent(studentData);
+      addUser(studentUser);
+      addUser(parentUser);
+      
+      // Guardar credenciales para mostrar en modal de éxito
       setGeneratedCredentials({
-        studentEmail,
-        studentPassword,
-        parentEmail,
-        parentPassword
+        studentEmail: studentEmail,
+        studentPassword: studentPassword,
+        parentEmail: parentEmail,
+        parentPassword: parentPassword
       });
-      setShowCredentialsModal(true);
+      setNewParentCredentials({
+        name: formData.parentName,
+        email: parentEmail,
+        password: parentPassword
+      });
+      setShowSuccessModal(true);
     }
 
     resetForm();
@@ -520,7 +631,7 @@ const Students: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleViewCredentials(student)}
+                          onClick={() => showParentCredentials(student)}
                           className="text-yellow-600 hover:text-yellow-900"
                           title="Ver credenciales"
                         >
@@ -602,39 +713,9 @@ const Students: React.FC = () => {
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="input-field bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] focus:ring-accent focus:border-accent"
+                      className="input-field"
                     />
                   </div>
-
-                  {!editingStudent && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Email del estudiante
-                        </label>
-                        <input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                          placeholder="Se generará automáticamente si se deja vacío"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Contraseña del estudiante
-                        </label>
-                        <input
-                          type="password"
-                          value={formData.password}
-                          onChange={(e) => setFormData({...formData, password: e.target.value})}
-                          className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                          placeholder="Por defecto: student123"
-                        />
-                      </div>
-                    </>
-                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -645,7 +726,7 @@ const Students: React.FC = () => {
                       required
                       value={formData.birthDate}
                       onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     />
                     {formData.birthDate && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -667,11 +748,10 @@ const Students: React.FC = () => {
                         setFormData({
                           ...formData, 
                           categoryId: selectedCategoryId,
-                          // Auto-sugerir el coach si la categoría tiene uno asignado
                           coachId: selectedCategory?.coachId || formData.coachId
                         });
                       }}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     >
                       <option value="">Seleccionar categoría</option>
                       {categories.map(category => (
@@ -689,7 +769,7 @@ const Students: React.FC = () => {
                     <select
                       value={formData.coachId}
                       onChange={(e) => setFormData({...formData, coachId: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     >
                       <option value="">Sin asignar</option>
                       {coaches.map(coach => (
@@ -698,13 +778,6 @@ const Students: React.FC = () => {
                         </option>
                       ))}
                     </select>
-                    {formData.categoryId && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {categories.find(c => c.id === formData.categoryId)?.coachId 
-                          ? 'El coach fue sugerido según la categoría seleccionada'
-                          : 'Esta categoría no tiene un coach predeterminado'}
-                      </p>
-                    )}
                   </div>
 
                   <div>
@@ -716,7 +789,7 @@ const Students: React.FC = () => {
                       required
                       value={formData.parentName}
                       onChange={(e) => setFormData({...formData, parentName: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     />
                   </div>
 
@@ -729,7 +802,7 @@ const Students: React.FC = () => {
                       required
                       value={formData.parentPhone}
                       onChange={(e) => setFormData({...formData, parentPhone: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     />
                   </div>
 
@@ -742,7 +815,7 @@ const Students: React.FC = () => {
                       required
                       value={formData.parentEmail}
                       onChange={(e) => setFormData({...formData, parentEmail: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     />
                   </div>
 
@@ -754,24 +827,9 @@ const Students: React.FC = () => {
                       type="text"
                       value={formData.emergencyContact}
                       onChange={(e) => setFormData({...formData, emergencyContact: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     />
                   </div>
-
-                  {!editingStudent && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Contraseña del padre/madre
-                      </label>
-                      <input
-                        type="password"
-                        value={formData.parentPassword}
-                        onChange={(e) => setFormData({...formData, parentPassword: e.target.value})}
-                        className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                        placeholder="Por defecto: parent123"
-                      />
-                    </div>
-                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -781,47 +839,11 @@ const Students: React.FC = () => {
                       type="tel"
                       value={formData.emergencyPhone}
                       onChange={(e) => setFormData({...formData, emergencyPhone: e.target.value})}
-                      className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      className="input-field"
                     />
                   </div>
+
                 </div>
-
-                {!editingStudent && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Posición (Voleibol)
-                      </label>
-                      <select
-                        value={formData.position}
-                        onChange={(e) => setFormData({...formData, position: e.target.value})}
-                        className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                      >
-                        <option value="">Seleccionar posición</option>
-                        <option value="Colocador">Colocador</option>
-                        <option value="Opuesto">Opuesto</option>
-                        <option value="Central">Central</option>
-                        <option value="Atacante">Atacante</option>
-                        <option value="Líbero">Líbero</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Número de camiseta
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={formData.jerseyNumber}
-                        onChange={(e) => setFormData({...formData, jerseyNumber: e.target.value})}
-                        className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                        placeholder="1-99"
-                      />
-                    </div>
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -831,7 +853,7 @@ const Students: React.FC = () => {
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    className="input-field"
                   />
                 </div>
 
@@ -843,7 +865,7 @@ const Students: React.FC = () => {
                     rows={3}
                     value={formData.medicalInfo}
                     onChange={(e) => setFormData({...formData, medicalInfo: e.target.value})}
-                    className="input-field bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] placeholder-gray-400 dark:placeholder-gray-500 focus:ring-accent focus:border-accent"
+                    className="input-field"
                     placeholder="Alergias, condiciones médicas, medicamentos..."
                   />
                 </div>
@@ -856,11 +878,11 @@ const Students: React.FC = () => {
                       setEditingStudent(null);
                       resetForm();
                     }}
-                    className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors flex-1"
+                    className="btn-secondary flex-1"
                   >
                     Cancelar
                   </button>
-                  <button type="submit" className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex-1">
+                  <button type="submit" className="btn-primary flex-1">
                     {editingStudent ? 'Actualizar' : 'Crear'} Estudiante
                   </button>
                 </div>
@@ -1045,6 +1067,298 @@ const Students: React.FC = () => {
             >
               Cerrar
             </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Success Modal for New Parent */}
+      {showSuccessModal && newParentCredentials && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6"
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiCheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                ✅ Estudiante registrado exitosamente
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Se han creado las cuentas de acceso
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              {/* Credenciales del Estudiante */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3 flex items-center">
+                  📚 Credenciales del Estudiante
+                </h4>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Email
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={generatedCredentials.studentEmail}
+                        readOnly
+                        className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                      />
+                      <button
+                        onClick={() => copyText(generatedCredentials.studentEmail, 'email')}
+                        className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                      >
+                        {copiedEmail ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Contraseña
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={generatedCredentials.studentPassword}
+                          readOnly
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600"
+                        >
+                          {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => copyText(generatedCredentials.studentPassword, 'password')}
+                        className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                      >
+                        {copiedPassword ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Credenciales del Padre */}
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                <h4 className="font-medium text-green-900 dark:text-green-100 mb-3 flex items-center">
+                  👨‍👩‍👧‍👦 Credenciales del Padre/Madre
+                </h4>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Email
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={generatedCredentials.parentEmail}
+                        readOnly
+                        className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                      />
+                      <button
+                        onClick={() => copyText(generatedCredentials.parentEmail, 'email')}
+                        className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded-lg transition-colors"
+                      >
+                        {copiedEmail ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Contraseña
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={generatedCredentials.parentPassword}
+                          readOnly
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600"
+                        >
+                          {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => copyText(generatedCredentials.parentPassword, 'password')}
+                        className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded-lg transition-colors"
+                      >
+                        {copiedPassword ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                💡 El padre/madre deberá cambiar esta contraseña en su primer inicio de sesión.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  const subject = encodeURIComponent('Credenciales de acceso - Academia de Voleibol');
+                  const body = encodeURIComponent(
+                    `Estimado/a padre/madre de familia,\n\n` +
+                    `Le damos la bienvenida a la Academia de Voleibol.\n\n` +
+                    `CREDENCIALES DEL ESTUDIANTE:\n` +
+                    `Email: ${generatedCredentials.studentEmail}\n` +
+                    `Contraseña: ${generatedCredentials.studentPassword}\n\n` +
+                    `CREDENCIALES DEL PADRE/MADRE:\n` +
+                    `Email: ${generatedCredentials.parentEmail}\n` +
+                    `Contraseña temporal: ${generatedCredentials.parentPassword}\n\n` +
+                    `IMPORTANTE:\n` +
+                    `- Ambas cuentas pueden acceder al sistema\n` +
+                    `- La cuenta del estudiante accede al dashboard estudiantil\n` +
+                    `- La cuenta del padre/madre accede al dashboard parental\n` +
+                    `- Por favor, cambien las contraseñas en su primer inicio de sesión\n\n` +
+                    `Saludos cordiales,\nAcademia de Voleibol`
+                  );
+                  window.open(`mailto:${generatedCredentials.parentEmail}?subject=${subject}&body=${body}`, '_blank');
+                }}
+                className="flex-1 bg-accent hover:bg-accent/90 text-primary font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
+              >
+                <FiMail className="w-4 h-4 mr-2" />
+                Enviar por email
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setNewParentCredentials(null);
+                  setCopiedEmail(false);
+                  setCopiedPassword(false);
+                  setShowPassword(false);
+                }}
+                className="flex-1 bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* View Credentials Modal for Existing Parent */}
+      {showViewCredentialsModal && selectedParentCredentials && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Credenciales de Acceso
+              </h3>
+              <button
+                onClick={() => {
+                  setShowViewCredentialsModal(false);
+                  setSelectedParentCredentials(null);
+                  setCopiedEmail(false);
+                  setCopiedPassword(false);
+                  setShowPassword(false);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="text-center mb-4">
+                <FiKey className="w-12 h-12 text-purple-600 mx-auto mb-2" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Credenciales para <span className="font-semibold">{selectedParentCredentials.name}</span>
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email de acceso
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={selectedParentCredentials.email}
+                      readOnly
+                      className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                    />
+                    <button
+                      onClick={() => copyText(selectedParentCredentials.email, 'email')}
+                      className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900 rounded-lg transition-colors"
+                    >
+                      {copiedEmail ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Contraseña
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={selectedParentCredentials.password}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600"
+                      >
+                        {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => copyText(selectedParentCredentials.password, 'password')}
+                      className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900 rounded-lg transition-colors"
+                    >
+                      {copiedPassword ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mt-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  ⚠️ Mantenga estas credenciales seguras y compártalas solo con el padre/madre correspondiente.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowViewCredentialsModal(false);
+                  setSelectedParentCredentials(null);
+                  setCopiedEmail(false);
+                  setCopiedPassword(false);
+                  setShowPassword(false);
+                }}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

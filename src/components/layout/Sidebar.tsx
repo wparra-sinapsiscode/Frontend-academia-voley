@@ -169,7 +169,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       'text-white/80 hover:text-white'
                     }`}
                   >
-                    {item.icon && React.createElement(item.icon, { className: "w-5 h-5" })}
+                    {item.icon && React.createElement(item.icon as any, { className: "w-5 h-5" })}
                     <span className="font-medium">{item.label}</span>
                   </Link>
                 );
@@ -248,7 +248,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       onClick={onClose}
                       className={`sidebar-item ${isActive ? 'active' : 'text-white/80 hover:text-white'}`}
                     >
-                      {item.icon && React.createElement(item.icon, { className: "w-5 h-5" })}
+                      {item.icon && React.createElement(item.icon as any, { className: "w-5 h-5" })}
                       <span className="font-medium">{item.label}</span>
                     </Link>
                   );

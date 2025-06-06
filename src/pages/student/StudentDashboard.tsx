@@ -15,7 +15,7 @@ import {
 } from 'react-icons/fi';
 
 const StudentDashboard: React.FC = () => {
-  const { user, students, studentLogs, evaluations, challengeParameters } = useAppContext();
+  const { user, students, studentLogs, evaluations } = useAppContext();
   
   // Find the current student
   const currentStudent = students.find(s => s.userId === user?.id);

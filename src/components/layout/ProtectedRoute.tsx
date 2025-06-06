@@ -4,7 +4,7 @@ import { useAppContext } from '../../contexts/AppContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  roles?: Array<'admin' | 'coach' | 'parent'>;
+  roles?: Array<'admin' | 'coach' | 'parent' | 'student'>;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {

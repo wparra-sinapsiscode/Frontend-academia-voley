@@ -72,6 +72,7 @@ interface Payment {
   category?: string;
   notes?: string;
   pendingApproval?: boolean;
+  period?: string;
 }
 
 interface Tournament {
@@ -203,7 +204,7 @@ interface Evaluation {
     leadership: number;
     attitude: number;
   };
-  overall: number;
+  overallScore: number;
   notes: string;
   goals: string[];
 }
@@ -411,7 +412,27 @@ export const mockUsers: User[] = [
     profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
     active: true
   },
-  // Students
+  // Nuevos padres agregados
+  {
+    id: 'parent11',
+    email: 'mariana.rodriguez@email.com',
+    password: 'parent111',
+    name: 'Mariana Rodríguez',
+    role: 'parent',
+    profileImage: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop',
+    active: true
+  },
+  // Nuevos estudiantes agregados
+  {
+    id: 'student11',
+    email: 'camila.rodriguez@email.com',
+    password: 'student111',
+    name: 'Camila Rodríguez',
+    role: 'student',
+    profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
+    active: true
+  },
+  // Estudiantes que faltaban para que funcione el sistema
   {
     id: 'student1',
     email: 'sofia.martinez@email.com',
@@ -441,9 +462,9 @@ export const mockUsers: User[] = [
   },
   {
     id: 'student4',
-    email: 'mateo.sanchez@email.com',
+    email: 'isabella.sanchez@email.com',
     password: 'student012',
-    name: 'Mateo Sánchez',
+    name: 'Isabella Sánchez',
     role: 'student',
     profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
     active: true
@@ -459,9 +480,9 @@ export const mockUsers: User[] = [
   },
   {
     id: 'student6',
-    email: 'lucas.fernandez@email.com',
+    email: 'andrea.fernandez@email.com',
     password: 'student678',
-    name: 'Lucas Fernández',
+    name: 'Andrea Fernández',
     role: 'student',
     profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
     active: true
@@ -477,31 +498,31 @@ export const mockUsers: User[] = [
   },
   {
     id: 'student8',
-    email: 'daniel.ramirez@email.com',
+    email: 'ana.ramirez@email.com',
     password: 'student234',
-    name: 'Daniel Ramírez',
+    name: 'Ana Ramírez',
     role: 'student',
     profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
     active: true
   },
   {
     id: 'student9',
-    email: 'mariana.mendoza@email.com',
+    email: 'patricia.mendoza@email.com',
     password: 'student567',
-    name: 'Mariana Mendoza',
+    name: 'Patricia Mendoza',
     role: 'student',
     profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
     active: true
   },
   {
     id: 'student10',
-    email: 'sebastian.castro@email.com',
+    email: 'luis.castro@email.com',
     password: 'student890',
-    name: 'Sebastián Castro',
+    name: 'Luis Castro',
     role: 'student',
     profileImage: 'https://images.unsplash.com/photo-1605406575497-015ab0d21b9b?w=400&h=400&fit=crop',
     active: true
-  }
+  },
 ];
 
 // Estudiantes mock
@@ -625,6 +646,18 @@ export const mockStudents: Student[] = [
     active: true,
     position: 'Opuesto',
     jerseyNumber: 11
+  },
+  {
+    id: 'student11',
+    userId: 'student11',
+    parentId: 'parent11',
+    categoryId: 'cat_infantil',
+    dateOfBirth: new Date('2012-08-25'),
+    medicalInfo: 'Sin condiciones médicas',
+    enrollmentDate: new Date('2024-03-01'),
+    active: true,
+    position: 'Líbero',
+    jerseyNumber: 6
   }
 ];
 
@@ -1855,7 +1888,7 @@ export const mockEvaluations: Evaluation[] = [
       leadership: 7,
       attitude: 9
     },
-    overall: 7,
+    overallScore: 7,
     notes: 'Sofía muestra gran progreso en los fundamentos. Excelente actitud y trabajo en equipo. Necesita mejorar la potencia en el remate.',
     goals: [
       'Mejorar técnica de remate',
@@ -1888,7 +1921,7 @@ export const mockEvaluations: Evaluation[] = [
       leadership: 5,
       attitude: 8
     },
-    overall: 6.5,
+    overallScore: 6.5,
     notes: 'Diego tiene buenas condiciones físicas. Debe trabajar en la concentración durante los partidos.',
     goals: [
       'Mejorar la recepción',
@@ -1921,7 +1954,7 @@ export const mockEvaluations: Evaluation[] = [
       leadership: 9,
       attitude: 10
     },
-    overall: 8.5,
+    overallScore: 8.5,
     notes: 'Valentina es una jugadora ejemplar. Excelente líbero con gran visión de juego. Lista para competencias de mayor nivel.',
     goals: [
       'Perfeccionar técnicas avanzadas',
@@ -1954,7 +1987,7 @@ export const mockEvaluations: Evaluation[] = [
       leadership: 8,
       attitude: 9
     },
-    overall: 8.8,
+    overallScore: 8.8,
     notes: 'Camila es nuestra mejor atacante. Potencia excepcional y técnica depurada. Debe trabajar en la defensa baja.',
     goals: [
       'Mejorar defensa y recepción',
@@ -1987,7 +2020,7 @@ export const mockEvaluations: Evaluation[] = [
       leadership: 8,
       attitude: 10
     },
-    overall: 7.8,
+    overallScore: 7.8,
     notes: 'Notable mejora desde la última evaluación. El trabajo en el remate está dando resultados. Mantener el excelente espíritu de equipo.',
     goals: [
       'Continuar fortalecimiento físico',

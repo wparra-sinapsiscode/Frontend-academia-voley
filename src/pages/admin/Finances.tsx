@@ -99,7 +99,7 @@ const Finances: React.FC = () => {
       voucherFile: p.voucherUrl,
       voucherUrl: p.voucherUrl,
       voucherImage: p.voucherImage
-    } as Payment;
+    };
   });
 
   // Use real expenses data from mockData

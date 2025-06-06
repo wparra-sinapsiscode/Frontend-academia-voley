@@ -2,15 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '../../contexts/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { Download, Calendar, TrendingUp, Award, Clock, Target, FileText, Filter } from 'lucide-react';
+import { Download, Calendar, TrendingUp, Award, Clock } from 'lucide-react';
 import { generateReportPDF } from '../../utils/pdfGenerator';
 
 const ParentReports: React.FC = () => {
   const { user, users, students, evaluations, categories } = useAppContext();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedReport, setSelectedReport] = useState('progress');
-  
-  const currentUser = users.find(u => u.id === user?.id);
   const student = students.find(s => s.parentId === user?.id);
   
   // Get evaluations for this student
@@ -24,7 +22,7 @@ const ParentReports: React.FC = () => {
     const currentQuarter = Math.floor(currentMonth / 3);
     
     switch (selectedPeriod) {
-      case 'week':
+      case 'week': {
         // Last 7 days
         const weekStart = new Date(now);
         weekStart.setDate(weekStart.getDate() - 7);
@@ -33,8 +31,9 @@ const ParentReports: React.FC = () => {
           endDate: now,
           months: ['Día 1', 'Día 2', 'Día 3', 'Día 4', 'Día 5', 'Día 6', 'Día 7']
         };
+      }
       
-      case 'month':
+      case 'month': {
         // Current month
         const monthStart = new Date(currentYear, currentMonth, 1);
         const monthEnd = new Date(currentYear, currentMonth + 1, 0);
@@ -43,8 +42,9 @@ const ParentReports: React.FC = () => {
           endDate: monthEnd,
           months: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4']
         };
+      }
       
-      case 'trimester':
+      case 'trimester': {
         // Current quarter
         const quarterStart = new Date(currentYear, currentQuarter * 3, 1);
         const quarterEnd = new Date(currentYear, (currentQuarter + 1) * 3, 0);
@@ -58,8 +58,9 @@ const ParentReports: React.FC = () => {
           endDate: quarterEnd,
           months: quarterMonths
         };
+      }
       
-      case 'year':
+      case 'year': {
         // Current year
         const yearStart = new Date(currentYear, 0, 1);
         const yearEnd = new Date(currentYear, 11, 31);
@@ -72,6 +73,7 @@ const ParentReports: React.FC = () => {
           endDate: yearEnd,
           months: yearMonths
         };
+      }
       
       default:
         return {
@@ -122,9 +124,9 @@ const ParentReports: React.FC = () => {
 
   const progressData = useMemo(() => {
     const { months } = getFilteredData;
-    let baseTecnica = 6.5;
-    let baseFisica = 7.0;
-    let baseTactica = 5.8;
+    const baseTecnica = 6.5;
+    const baseFisica = 7.0;
+    const baseTactica = 5.8;
     
     return months.map((month, index) => {
       // Simulate progression over time

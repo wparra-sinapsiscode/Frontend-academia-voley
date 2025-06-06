@@ -37,13 +37,6 @@ const Coaches: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [newCoachCredentials, setNewCoachCredentials] = useState<{name: string, email: string, password: string} | null>(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
-  
-  // Mapeo de credenciales para coaches existentes
-  const coachCredentials: Record<string, string> = {
-    'sofia.martinez@academiavoley.pe': 'coach123',
-    'juan@academia.com': 'coach456',
-    'carlos@academia.com': 'coach789'
-  };
 
   // Filter coaches
   const filteredCoaches = coaches.filter(coach => {
@@ -106,7 +99,10 @@ const Coaches: React.FC = () => {
   
   // Show credentials for existing coach
   const showCoachCredentials = (coach: any) => {
-    const password = coachCredentials[coach.email] || 'No disponible';
+    // Obtener la contraseña real del usuario desde el contexto
+    const coachUser = users.find(u => u.id === coach.id && u.role === 'coach');
+    const password = coachUser?.password || 'No disponible';
+    
     setSelectedCoachCredentials({
       email: coach.email,
       password: password,
@@ -146,24 +142,22 @@ const Coaches: React.FC = () => {
     };
 
     if (editingCoach) {
-      // Actualizar el coach en el array de coaches
-      updateCoach(editingCoach.id, coachData);
-      
-      // También actualizar el usuario correspondiente
-      const userToUpdate = users.find(u => u.id === editingCoach.id);
-      if (userToUpdate) {
-        dispatch({ type: 'UPDATE_USER', payload: { 
-          id: editingCoach.id, 
-          user: {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            avatar: coachData.avatar,
-            specialization: formData.specialization,
-            experience: formData.experience
-          }
-        }});
-      }
+      // Actualizar los datos del usuario (que es el coach)
+      dispatch({ type: 'UPDATE_USER', payload: { 
+        id: editingCoach.id, 
+        user: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          avatar: coachData.avatar,
+          // Guardar los datos específicos del coach en el usuario
+          specialization: formData.specialization,
+          experience: formData.experience,
+          certifications: coachData.certifications,
+          assignedCategories: formData.assignedCategories,
+          hireDate: new Date(formData.hireDate)
+        }
+      }});
       
       setEditingCoach(null);
     } else {
@@ -196,7 +190,8 @@ const Coaches: React.FC = () => {
         avatar: result.coach.avatar,
         phone: result.coachUser.phone,
         createdAt: new Date(),
-        lastLogin: undefined
+        lastLogin: undefined,
+        active: true
       });
       
       // Show success modal with credentials
@@ -213,26 +208,47 @@ const Coaches: React.FC = () => {
   };
 
   const handleEdit = (coach: any) => {
+    // Buscar los datos del coach en el contexto
+    const coachData = coaches.find(c => c.id === coach.id);
+    
     setEditingCoach(coach);
     setFormData({
       name: coach.name,
       email: coach.email,
-      phone: coach.phone,
+      phone: coach.phone || '',
       birthDate: '',
       address: '',
-      specialization: Array.isArray(coach.specialization) ? coach.specialization : [],
-      experience: coach.experience || 0,
-      certifications: (Array.isArray(coach.certifications) ? coach.certifications : []).join(', '),
-      assignedCategories: Array.isArray(coach.assignedCategories) ? coach.assignedCategories : [],
-      hireDate: coach.hireDate ? new Date(coach.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      specialization: Array.isArray((coach as any).specialization) ? (coach as any).specialization : [],
+      experience: (coach as any).experience || 0,
+      certifications: (Array.isArray((coach as any).certifications) ? (coach as any).certifications : []).join(', '),
+      assignedCategories: Array.isArray((coach as any).assignedCategories) ? (coach as any).assignedCategories : [],
+      hireDate: (coach as any).hireDate ? new Date((coach as any).hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       avatar: coach.avatar || ''
     });
     setShowAddModal(true);
   };
 
   const handleDelete = (coachId: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este entrenador? Esta acción también eliminará su cuenta de usuario.')) {
-      deleteCoach(coachId);
+    // Buscar el coach para obtener su información
+    const coachToDelete = coaches.find(c => c.id === coachId);
+    
+    if (!coachToDelete) return;
+    
+    // Verificar si tiene estudiantes asignados
+    const assignedStudents = students.filter(student => {
+      const category = categories.find(cat => cat.id === student.categoryId);
+      return category && (category as any).coachId === coachId;
+    });
+    
+    let confirmMessage = `¿Estás seguro de que quieres eliminar al entrenador ${coachToDelete.name}?\n\nEsta acción también eliminará su cuenta de usuario.`;
+    
+    if (assignedStudents.length > 0) {
+      confirmMessage += `\n\n⚠️ ADVERTENCIA: Este entrenador tiene ${assignedStudents.length} estudiante(s) asignado(s).`;
+    }
+    
+    if (window.confirm(confirmMessage)) {
+      // Eliminar el usuario del sistema
+      dispatch({ type: 'DELETE_COACH', payload: coachId });
     }
   };
 

@@ -6,12 +6,10 @@ import {
   FiAward, 
   FiCheckCircle, 
   FiClock, 
-  FiTrendingUp,
   FiZap,
   FiStar,
   FiUsers,
-  FiActivity,
-  FiCalendar
+  FiActivity
 } from 'react-icons/fi';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 
@@ -45,10 +43,6 @@ const StudentChallenges: React.FC = () => {
       .reduce((total, log) => total + log.value, 0);
   };
 
-  const getParameterName = (parameterId: string) => {
-    const param = challengeParameters.find(p => p.id === parameterId);
-    return param ? param.name : parameterId;
-  };
 
   const weeklyServes = getProgressForParameter('serves_direct', 7);
   const weeklyChallenge = {
@@ -103,7 +97,6 @@ const StudentChallenges: React.FC = () => {
 
   const weeklyDigs = getProgressForParameter('digs_success', 7);
   const weeklyBlocks = getProgressForParameter('blocks_success', 7);
-  const weeklyTrainings = getProgressForParameter('training_intensity', 7);
 
   const weeklyXPChallenges = [
     {

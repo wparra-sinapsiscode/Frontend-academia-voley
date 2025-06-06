@@ -132,7 +132,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     setLoading(true);
     
     try {
-      let updatedProfileData = { ...profileData };
+      const updatedProfileData = { ...profileData };
       
       // Process image if selected
       if (selectedImageFile) {

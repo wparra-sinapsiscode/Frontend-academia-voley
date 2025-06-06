@@ -80,7 +80,6 @@ const StudentProgress: React.FC = () => {
     }
 
     // Use real evaluation data for recent months
-    const sortedEvaluations = studentEvaluations.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const currentTechnical = technicalScore;
     const currentPhysical = physicalScore;
     

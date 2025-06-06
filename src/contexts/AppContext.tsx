@@ -1,21 +1,20 @@
 import React, { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
-import { 
-  mockUsers, 
-  mockStudents, 
-  mockCoaches, 
-  mockCategories, 
-  mockSchedules, 
+import {
+  mockUsers,
+  mockStudents,
+  mockCoaches,
+  mockCategories,
+  mockSchedules,
   mockPayments,
-  mockExpenses, 
-  mockTournaments, 
-  mockAnnouncements, 
+  mockTournaments,
+  mockAnnouncements,
   mockTrainingPlans,
-  mockClassPlans, 
-  mockAttendances, 
+  mockClassPlans,
+  mockAttendances,
   mockEvaluations,
   mockChallengeParameters,
   mockStudentLogs,
-  defaultCredentials 
+  defaultCredentials
 } from '../data/mockData';
 
 // Types defined locally to avoid import issues
@@ -444,7 +443,7 @@ interface AppState {
   darkMode: boolean;
 }
 
-type AppAction = 
+type AppAction =
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'UPDATE_STUDENT'; payload: { id: string; student: Partial<Student> } }
@@ -570,13 +569,13 @@ const initialState: AppState = {
     { id: 'block', name: 'Bloqueo', category: 'technical', description: 'Capacidad para realizar bloqueos efectivos', active: true },
     { id: 'dig', name: 'Defensa', category: 'technical', description: 'Habilidad para defender y recibir', active: true },
     { id: 'set', name: 'Colocación', category: 'technical', description: 'Habilidad para realizar pases precisos', active: true },
-    
+
     // Campos físicos predeterminados
     { id: 'endurance', name: 'Resistencia', category: 'physical', description: 'Capacidad aeróbica y resistencia física', active: true },
     { id: 'strength', name: 'Fuerza', category: 'physical', description: 'Fortaleza muscular general', active: true },
     { id: 'agility', name: 'Agilidad', category: 'physical', description: 'Capacidad para moverse con rapidez y coordinación', active: true },
     { id: 'jump', name: 'Salto', category: 'physical', description: 'Potencia de salto vertical y horizontal', active: true },
-    
+
     // Campos mentales predeterminados
     { id: 'focus', name: 'Concentración', category: 'mental', description: 'Capacidad para mantener la concentración', active: true },
     { id: 'teamwork', name: 'Trabajo en Equipo', category: 'mental', description: 'Colaboración y trabajo con compañeras', active: true },
@@ -836,35 +835,34 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'DELETE_COACH':
       return {
         ...state,
-        coaches: state.coaches.filter(coach => coach.id !== action.payload),
-        // Also remove the associated user
-        users: state.users.filter(user => {
-          const coach = state.coaches.find(c => c.id === action.payload);
-          return !(coach && user.email === coach.email);
-        })
+        // Eliminar el usuario con rol coach
+        users: state.users.filter(user => user.id !== action.payload),
+        // También eliminar de la lista de coaches si existe
+        coaches: state.coaches.filter(coach => coach.id !== action.payload)
       };
     case 'ADD_USER':
       return {
         ...state,
         users: [...state.users, action.payload]
       };
-    case 'UPDATE_USER':
+    case 'UPDATE_USER': {
       const updatedUsers = state.users.map(user =>
         user.id === action.payload.id
           ? { ...user, ...action.payload.user }
           : user
       );
-      
+
       // If updating the current user, update it as well
       const updatedCurrentUser = state.user && state.user.id === action.payload.id
         ? { ...state.user, ...action.payload.user }
         : state.user;
-      
+
       return {
         ...state,
         users: updatedUsers,
         user: updatedCurrentUser
       };
+    }
     case 'ADD_COACH_SPECIALIZATION':
       return {
         ...state,
@@ -884,7 +882,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         coachSpecializations: state.coachSpecializations.filter(spec => spec.id !== action.payload)
       };
-    case 'TOGGLE_DARK_MODE':
+    case 'TOGGLE_DARK_MODE': {
       const newDarkMode = !state.darkMode;
       if (typeof window !== 'undefined') {
         localStorage.setItem('darkMode', newDarkMode.toString());
@@ -895,6 +893,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         }
       }
       return { ...state, darkMode: newDarkMode };
+    }
     case 'INITIALIZE_DATA':
       return { ...state, ...action.payload };
     default:
@@ -913,18 +912,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Initialize data from localStorage or use mock data
   useEffect(() => {
-    
+
     // TEMPORAL: Descomentar la siguiente línea para limpiar localStorage y forzar carga de mockData
     // localStorage.removeItem('volleyAcademyData');
-    
+
     const savedData = localStorage.getItem('volleyAcademyData');
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-      } catch (e) {
-      }
-    }
-    
+
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
@@ -947,17 +940,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               ...coach,
               hireDate: new Date(coach.hireDate)
             })) || [];
-            
+
             // Get existing coach IDs to avoid duplicates
             const existingIds = new Set(savedCoaches.map((c: any) => c.id));
-            
+
             // Add mockCoaches that don't exist in saved data
             const missingMockCoaches = mockCoaches.filter(mockCoach => !existingIds.has(mockCoach.id));
-            
+
             // Merge both arrays
             const allCoaches = [...savedCoaches, ...missingMockCoaches];
-            
-            
+
+
             return allCoaches;
           })(),
           payments: (() => {
@@ -969,17 +962,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               approvedDate: payment.approvedDate ? new Date(payment.approvedDate) : undefined,
               voucherUploadDate: payment.voucherUploadDate ? new Date(payment.voucherUploadDate) : undefined
             })) || [];
-            
+
             // Get existing payment IDs to avoid duplicates
             const existingIds = new Set(savedPayments.map((p: any) => p.id));
-            
+
             // Add mockPayments that don't exist in saved data
             const missingMockPayments = mockPayments.filter(mockPayment => !existingIds.has(mockPayment.id));
-            
+
             // Merge both arrays
             const allPayments = [...savedPayments, ...missingMockPayments];
-            
-            
+
+
             return allPayments;
           })(),
           tournaments: parsedData.tournaments?.map((tournament: any) => ({
@@ -1001,19 +994,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               date: new Date(classPlan.date),
               createdAt: new Date(classPlan.createdAt)
             })) || [];
-            
+
             // Convertir mockClassPlans
             const processedMockClassPlans = mockClassPlans.map(cp => ({
               ...cp,
               date: new Date(cp.date),
               createdAt: new Date(cp.createdAt)
             }));
-            
+
             // Combinar mockClassPlans con savedClassPlans, evitando duplicados
             const existingIds = new Set(savedClassPlans.map((cp: any) => cp.id));
             const uniqueMockPlans = processedMockClassPlans.filter(cp => !existingIds.has(cp.id));
-            
-            
+
+
             // Retornar mockClassPlans primero, luego las guardadas
             return [...uniqueMockPlans, ...savedClassPlans];
           })(),
@@ -1050,7 +1043,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           const category = mockCategories.find(cat => cat.id === mockStudent.categoryId);
           const user = mockUsers.find(u => u.id === mockStudent.userId);
           const parent = mockUsers.find(u => u.id === mockStudent.parentId);
-          
+
           return {
             id: mockStudent.id,
             name: user?.name || 'Unknown Student',
@@ -1092,7 +1085,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             paymentStatus: 'paid' as const
           };
         });
-        
+
         dispatch({
           type: 'INITIALIZE_DATA',
           payload: {
@@ -1108,13 +1101,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               schedule: Array.isArray(cat.schedule) ? cat.schedule : [cat.schedule]
             })),
             schedules: mockSchedules,
-            payments: mockPayments.map(payment => ({
-              ...payment,
-              description: (payment as any).description || (payment as any).concept || '',
-              period: (payment as any).period || 'monthly',
-              dueDate: (payment as any).dueDate || (payment as any).date || new Date(),
-              status: payment.status === 'completed' ? 'paid' as const : payment.status
-            } as Payment)),
+            payments: mockPayments.map(payment => {
+              const { period, ...rest } = payment as any;
+              return {
+                ...rest,
+                description: payment.description || payment.concept || '',
+                dueDate: payment.dueDate || payment.date || new Date(),
+                status: payment.status === 'completed' ? 'paid' as const : payment.status
+              } as Payment;
+            }),
             tournaments: mockTournaments.map(tournament => ({
               ...tournament,
               description: (tournament as any).description || '',
@@ -1129,7 +1124,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             attendances: mockAttendances,
             evaluations: mockEvaluations.map(ev => ({
               ...ev,
-              overallScore: (ev as any).overallScore || (ev as any).overall || 0
+              overallScore: (ev as any).overallScore || 0
             })),
             challengeParameters: mockChallengeParameters.map(param => ({
               ...param,
@@ -1160,13 +1155,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       // Use mock data for first time
       console.log('🚀 AppContext - No hay datos en localStorage, usando mockData');
       console.log('🚀 AppContext - Inicializando con mockPayments:', mockPayments.length);
-      
+
       // Transform mockStudents to include full category object
       const transformedStudents = mockStudents.map((mockStudent: any) => {
         const category = mockCategories.find(cat => cat.id === mockStudent.categoryId);
         const user = mockUsers.find(u => u.id === mockStudent.userId);
         const parent = mockUsers.find(u => u.id === mockStudent.parentId);
-        
+
         return {
           id: mockStudent.id,
           name: user?.name || 'Unknown Student',
@@ -1208,7 +1203,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           paymentStatus: 'paid' as const
         };
       });
-      
+
       dispatch({
         type: 'INITIALIZE_DATA',
         payload: {
@@ -1226,11 +1221,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           schedules: mockSchedules,
           payments: mockPayments.map(payment => ({
             ...payment,
-            description: (payment as any).description || (payment as any).concept || '',
-            period: (payment as any).period || 'monthly',
-            dueDate: (payment as any).dueDate || (payment as any).date || new Date(),
+            description: payment.description || payment.concept || '',
+            period: payment.period || 'monthly',
+            dueDate: payment.dueDate ? new Date(payment.dueDate) : payment.date ? new Date(payment.date) : undefined,
+            date: payment.date ? new Date(payment.date) : undefined,
+            approvedDate: payment.approvedDate ? new Date(payment.approvedDate) : undefined,
             status: payment.status === 'completed' ? 'paid' as const : payment.status
-          } as Payment)),
+          })) as Payment[],
           tournaments: mockTournaments.map(tournament => ({
             ...tournament,
             description: (tournament as any).description || '',
@@ -1302,15 +1299,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     dispatch({ type: 'SET_LOADING', payload: true });
-    
+
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Check credentials against all users (including newly created ones)
     // First check the current state users
     const allUsers = state.users;
     const user = allUsers.find(u => u.email === email && u.password === password && u.active);
-    
+
     if (user) {
       const updatedUser = { ...user, lastLogin: new Date(), createdAt: (user as any).createdAt || new Date() };
       dispatch({ type: 'SET_USER', payload: updatedUser });
@@ -1318,12 +1315,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       dispatch({ type: 'SET_LOADING', payload: false });
       return true;
     }
-    
+
     // Fallback: Check default credentials (for backward compatibility)
     const isValidCredentials = Object.values(defaultCredentials).some(
       cred => cred.email === email && cred.password === password
     );
-    
+
     if (isValidCredentials) {
       const mockUser = mockUsers.find(u => u.email === email);
       if (mockUser) {
@@ -1334,7 +1331,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return true;
       }
     }
-    
+
     dispatch({ type: 'SET_LOADING', payload: false });
     return false;
   };
@@ -1350,8 +1347,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const addStudent = (studentData: Omit<Student, 'id'>) => {
     const newStudent: Student = {
-      ...studentData,
-      id: `student_${Date.now()}`
+      id: `student_${Date.now()}`,
+      ...studentData
     };
     dispatch({ type: 'ADD_STUDENT', payload: newStudent });
   };
@@ -1362,16 +1359,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const addPayment = (paymentData: Omit<Payment, 'id'>) => {
     console.log('🎯 AppContext - Recibiendo datos de pago:', paymentData);
-    
+
     const newPayment: Payment = {
       ...paymentData,
       id: `payment_${Date.now()}`
     };
-    
+
     console.log('🎯 AppContext - Pago completo creado:', newPayment);
     dispatch({ type: 'ADD_PAYMENT', payload: newPayment });
     console.log('🎯 AppContext - Pago añadido al estado');
-    
+
     // Create notification for admin when a payment is registered
     if (paymentData.pendingApproval) {
       console.log('🔔 AppContext - Creando notificación para admin (pendingApproval = true)');
@@ -1403,7 +1400,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const updatePayment = (id: string, payment: Partial<Payment>) => {
     // Get the current payment to check for changes
     const currentPayment = state.payments.find(p => p.id === id);
-    
+
     // If payment is being marked as pending approval and wasn't before, create a notification
     if (payment.pendingApproval && currentPayment && !currentPayment.pendingApproval) {
       const student = state.students.find(s => s.id === currentPayment.studentId);
@@ -1423,7 +1420,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         dispatch({ type: 'ADD_NOTIFICATION', payload: notification });
       }
     }
-    
+
     // If payment is being approved, create notification for parent
     if (payment.approved && currentPayment && !currentPayment.approved) {
       const student = state.students.find(s => s.id === currentPayment.studentId);
@@ -1444,7 +1441,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         dispatch({ type: 'ADD_NOTIFICATION', payload: notification });
       }
     }
-    
+
     // If payment is being rejected, create notification for parent
     if (payment.rejected && currentPayment && !currentPayment.rejected) {
       const student = state.students.find(s => s.id === currentPayment.studentId);
@@ -1465,7 +1462,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         dispatch({ type: 'ADD_NOTIFICATION', payload: notification });
       }
     }
-    
+
     dispatch({ type: 'UPDATE_PAYMENT', payload: { id, payment } });
   };
 
@@ -1522,7 +1519,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       ...classPlanData,
       id: `class_${Date.now()}`
     };
-    
+
     // Create corresponding training plan
     const trainingPlan: TrainingPlan = {
       id: `plan_${Date.now()}`,
@@ -1567,9 +1564,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         category: 'cooldown' as const
       }))
     };
-    
+
     newClassPlan.trainingPlanId = trainingPlan.id;
-    
+
     dispatch({ type: 'ADD_CLASS_PLAN', payload: newClassPlan });
     dispatch({ type: 'ADD_TRAINING_PLAN', payload: trainingPlan });
   };
@@ -1579,11 +1576,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (currentClassPlan && currentClassPlan.trainingPlanId) {
       // Update corresponding training plan
       const updatedTrainingPlan: Partial<TrainingPlan> = {};
-      
+
       if (classPlanData.title) updatedTrainingPlan.title = classPlanData.title;
       if (classPlanData.objectives) updatedTrainingPlan.objectives = classPlanData.objectives;
       if (classPlanData.duration) updatedTrainingPlan.duration = classPlanData.duration;
-      
+
       if (classPlanData.warmUpPlan) {
         updatedTrainingPlan.warmUp = classPlanData.warmUpPlan.exercises.map((ex, index) => ({
           id: `warmup_${index}_${Date.now()}`,
@@ -1596,7 +1593,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           category: 'warmup' as const
         }));
       }
-      
+
       if (classPlanData.mainActivityPlan) {
         updatedTrainingPlan.exercises = classPlanData.mainActivityPlan.exercises.map((ex, index) => ({
           id: `main_${index}_${Date.now()}`,
@@ -1609,7 +1606,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           category: 'technique' as const
         }));
       }
-      
+
       if (classPlanData.coolDownPlan) {
         updatedTrainingPlan.coolDown = classPlanData.coolDownPlan.exercises.map((ex, index) => ({
           id: `cooldown_${index}_${Date.now()}`,
@@ -1622,10 +1619,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           category: 'cooldown' as const
         }));
       }
-      
+
       dispatch({ type: 'UPDATE_TRAINING_PLAN', payload: { id: currentClassPlan.trainingPlanId, trainingPlan: updatedTrainingPlan } });
     }
-    
+
     dispatch({ type: 'UPDATE_CLASS_PLAN', payload: { id, classPlan: classPlanData } });
   };
 
@@ -1648,17 +1645,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const updateTrainingPlanFunc = (id: string, trainingPlanData: Partial<TrainingPlan>) => {
     const currentPlan = state.trainingPlans.find(tp => tp.id === id);
-    
+
     // If this is a plan generated from a class, update the corresponding class
     if (currentPlan && currentPlan.sourceType === 'class' && currentPlan.classId) {
       const classPlan = state.classPlans.find(cp => cp.id === currentPlan.classId);
       if (classPlan) {
         const updatedClassPlan: Partial<ClassPlan> = {};
-        
+
         if (trainingPlanData.title) updatedClassPlan.title = trainingPlanData.title;
         if (trainingPlanData.objectives) updatedClassPlan.objectives = trainingPlanData.objectives;
         if (trainingPlanData.duration) updatedClassPlan.duration = trainingPlanData.duration;
-        
+
         if (trainingPlanData.warmUp) {
           updatedClassPlan.warmUpPlan = {
             exercises: trainingPlanData.warmUp.map(ex => ({
@@ -1669,7 +1666,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             totalDuration: trainingPlanData.warmUp.reduce((sum, ex) => sum + ex.duration, 0)
           };
         }
-        
+
         if (trainingPlanData.exercises) {
           updatedClassPlan.mainActivityPlan = {
             exercises: trainingPlanData.exercises.map(ex => ({
@@ -1680,7 +1677,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             totalDuration: trainingPlanData.exercises.reduce((sum, ex) => sum + ex.duration, 0)
           };
         }
-        
+
         if (trainingPlanData.coolDown) {
           updatedClassPlan.coolDownPlan = {
             exercises: trainingPlanData.coolDown.map(ex => ({
@@ -1691,22 +1688,22 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             totalDuration: trainingPlanData.coolDown.reduce((sum, ex) => sum + ex.duration, 0)
           };
         }
-        
+
         dispatch({ type: 'UPDATE_CLASS_PLAN', payload: { id: currentPlan.classId, classPlan: updatedClassPlan } });
       }
     }
-    
+
     dispatch({ type: 'UPDATE_TRAINING_PLAN', payload: { id, trainingPlan: trainingPlanData } });
   };
 
   const deleteTrainingPlanFunc = (id: string) => {
     const trainingPlan = state.trainingPlans.find(tp => tp.id === id);
-    
+
     // If this is a plan generated from a class, also delete the class
     if (trainingPlan && trainingPlan.sourceType === 'class' && trainingPlan.classId) {
       dispatch({ type: 'DELETE_CLASS_PLAN', payload: trainingPlan.classId });
     }
-    
+
     dispatch({ type: 'DELETE_TRAINING_PLAN', payload: id });
   };
 
@@ -1822,8 +1819,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const addUser = (userData: Omit<User, 'id'>) => {
     const newUser: User = {
-      ...userData,
-      id: `user_${Date.now()}`
+      id: `user_${Date.now()}`,
+      ...userData
     };
     dispatch({ type: 'ADD_USER', payload: newUser });
   };
